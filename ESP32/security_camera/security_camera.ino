@@ -21,8 +21,8 @@
 #define SD_MMC_D0  40 
 
 // Constants
-const char* ssid = "Marko";
-const char* password = "87654321";
+const char* ssid = "PAGE";
+const char* password = "page2022#";
 
 // Video server configuration
 const char* serverIP = "192.168.0.108"; 
