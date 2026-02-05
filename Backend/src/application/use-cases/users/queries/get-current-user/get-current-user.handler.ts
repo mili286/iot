@@ -25,7 +25,7 @@ export class GetCurrentUserHandler implements IQueryHandler<
 
     if (!userId) {
       return Result.failure<User>(
-        Error.unauthorized("UserContext.Missing", "User context is missing"),
+        Error.unauthorized("Unauthorized", "You are unauthorized"),
       );
     }
 
@@ -33,7 +33,7 @@ export class GetCurrentUserHandler implements IQueryHandler<
 
     if (!user) {
       return Result.failure<User>(
-        Error.notFound("User.NotFound", `User with ID ${userId} not found`),
+        Error.unauthorized("Unauthorized", "You are unauthorized"),
       );
     }
 

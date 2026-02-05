@@ -1,8 +1,6 @@
 import { Result } from "../../shared/result";
 
-export interface ICommand {}
-
-export interface ICommandWithResponse<TResponse> extends ICommand {}
+export interface ICommand<TResponse = void> {}
 
 export interface IQuery<TResponse> {}
 

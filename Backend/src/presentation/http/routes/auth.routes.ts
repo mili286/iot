@@ -62,4 +62,34 @@ router.post("/login", (req, res) => authController.login(req, res));
  */
 router.post("/register", (req, res) => authController.register(req, res));
 
+/**
+ * @openapi
+ * /auth/refresh-token:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Refresh JWT token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               authToken:
+ *                 type: string
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Refresh successful
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Not Found
+ */
+router.post("/refresh-token", (req, res) =>
+  authController.refreshToken(req, res),
+);
+
 export default router;

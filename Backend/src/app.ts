@@ -7,7 +7,6 @@ import swaggerUi from "swagger-ui-express";
 import userRoutes from "./presentation/http/routes/user.routes";
 import authRoutes from "./presentation/http/routes/auth.routes";
 import { errorHandler } from "./presentation/http/middleware/error-handler.middleware";
-import { userContextMiddleware } from "./presentation/http/middleware/user-context.middleware";
 import passport from "passport";
 import { configurePassport } from "./infrastructure/auth/passport.config";
 
@@ -22,6 +21,9 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(passport.initialize());
 configurePassport();
+
+// User Context Middleware
+// app.use(userContextMiddleware());
 
 // Swagger Configuration
 const swaggerOptions = {

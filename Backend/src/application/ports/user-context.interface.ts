@@ -1,3 +1,3 @@
 export interface IUserContext {
-  userId: string | null;
+  get userId(): string | null;
 }

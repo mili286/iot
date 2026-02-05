@@ -1,5 +1,3 @@
-import "reflect-metadata";
-
 export const COMMAND_HANDLER_METADATA = "cqrs:command_handler";
 export const QUERY_HANDLER_METADATA = "cqrs:query_handler";
 export const VALIDATION_METADATA = "cqrs:validation";

@@ -4,11 +4,11 @@ import {
   ExtractJwt,
   StrategyOptions,
 } from "passport-jwt";
-import UserModel from "../../domain/entities/users/user.entity";
+import userEntity from "../../domain/entities/users/user.entity";
 
 export const configurePassport = () => {
   // Local Strategy (for login)
-  passport.use(UserModel.createStrategy());
+  passport.use(userEntity.createStrategy());
 
   // JWT Strategy (for protecting routes)
   const jwtOptions: StrategyOptions = {
@@ -19,7 +19,7 @@ export const configurePassport = () => {
   passport.use(
     new JwtStrategy(jwtOptions, async (jwt_payload, done) => {
       try {
-        const user = await UserModel.findById(jwt_payload.id);
+        const user = await userEntity.findById(jwt_payload.id);
         if (user) {
           return done(null, user);
         } else {

@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { configDotenv } from "dotenv";
 import app from "./app";
 import { connect } from "./infrastructure/database/database";

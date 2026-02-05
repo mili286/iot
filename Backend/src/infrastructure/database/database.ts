@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import "reflect-metadata";
 
 const { DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME } = process.env;
 const connectionString = `mongodb://${DB_HOST}:${DB_PORT}/${DB_NAME}`;

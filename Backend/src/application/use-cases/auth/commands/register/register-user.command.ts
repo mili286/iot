@@ -1,5 +1,5 @@
-import { ICommand } from "../../../cqrs/interfaces";
-import { Validate } from "../../../cqrs/decorators";
+import { ICommand } from "../../../../cqrs/interfaces";
+import { Validate } from "../../../../cqrs/decorators";
 import { registerUserSchema } from "./register-user.validation";
 
 @Validate(registerUserSchema)
