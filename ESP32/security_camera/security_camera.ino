@@ -23,6 +23,8 @@
 #define SD_MMC_CLK 39 
 #define SD_MMC_D0  40 
 
+#define PIR_PIN 14
+
 // Constants
 const char* ssid = "PAGE";
 const char* password = "page2022#";
@@ -40,6 +42,8 @@ bool isRecording = false;
 bool wsConnected = false;
 bool sdAvailable = false;
 bool isSyncing = false;
+unsigned long lastTriggerTime = 0;
+const unsigned long TRIGGER_COOLDOWN = 30000; // 30 seconds cooldown
 unsigned long lastFrameTime = 0;
 const int frameInterval = 200; // ~5 fps
 unsigned long chunkStartTime = 0;
@@ -58,6 +62,8 @@ void onWebsocketEvent(WStype_t type, uint8_t * payload, size_t length);
 void setup() {
   Serial.begin(115200);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(PIR_PIN, INPUT);
+  
   Wire.begin(SDA, SCL);           
   
   if (!i2CAddrTest(lcdAddress)) {
@@ -131,6 +137,11 @@ void loop() {
   if (wsConnected && !isSyncing && sdAvailable) {
     // uploadStoredFiles();
   }
+
+  int pirState = digitalRead(PIR_PIN);
+  if (pirState == HIGH) {
+    triggerEvent("motion");
+  }
 }
 
 void onWebsocketEvent(WStype_t type, uint8_t * payload, size_t length) {
@@ -179,6 +190,9 @@ void handleButton() {
         Serial.println("Button Pressed");
         isRecording = !isRecording;
         
+        // Trigger event via API
+        triggerEvent("button");
+        
         if (wsConnected) {
             if (isRecording) {
                 webSocket.sendTXT("42[\"start-recording\"]");
@@ -197,13 +211,33 @@ void handleButton() {
 }
 
 void triggerEvent(String type) {
-    if (wsConnected) {
-        // Example of sending an event with data
+    unsigned long currentTime = millis();
+    if (currentTime - lastTriggerTime < TRIGGER_COOLDOWN && lastTriggerTime != 0) {
+        Serial.printf("[HTTP] Cooldown active. Skipping %s trigger.\n", type.c_str());
+        return;
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        String url = "http://" + String(serverIP) + ":" + String(serverPort) + "/api/events/trigger";
+        http.begin(url);
+        http.addHeader("Content-Type", "application/json");
+
         String timestamp = getTimestamp();
-        String payload = "42[\"trigger-event\",{\"type\":\"" + type + "\",\"timestamp\":\"" + timestamp + "\"}]";
-        webSocket.sendTXT(payload);
+        String jsonPayload = "{\"type\":\"" + type + "\",\"timestamp\":\"" + timestamp + "\"}";
+        
+        Serial.printf("[HTTP] Triggering event: %s\n", type.c_str());
+        int httpResponseCode = http.POST(jsonPayload);
+
+        if (httpResponseCode > 0) {
+            Serial.printf("[HTTP] Response code: %d\n", httpResponseCode);
+            lastTriggerTime = currentTime; // Update last trigger time on success
+        } else {
+            Serial.printf("[HTTP] Error occurred: %s\n", http.errorToString(httpResponseCode).c_str());
+        }
+        http.end();
     } else {
-        Serial.println("Offline: Event cached");
+        Serial.println("WiFi Disconnected: Event not sent");
     }
 }
 
@@ -289,29 +323,62 @@ void uploadStoredFiles() {
         if (filePath.endsWith(".mjpeg")) {
             Serial.printf("Syncing: %s\n", filePath.c_str());
             
-            HTTPClient http;
-            String url = "http://" + String(serverIP) + ":" + String(serverPort) + "/api/upload/stream";
-            http.begin(url);
-            
-            String boundary = "----ESP32Boundary" + String(millis());
-            http.addHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
-            
-            String header = "--" + boundary + "\r\n";
-            header += "Content-Disposition: form-data; name=\"file\"; filename=\"" + filePath.substring(5) + "\"\r\n";
-            header += "Content-Type: video/x-motion-jpeg\r\n\r\n";
-            String tail = "\r\n--" + boundary + "--\r\n";
-            
-            size_t fileSize = file.size();
-            // We can't easily load whole file into RAM, use stream upload if possible
-            // Or upload in chunks. HTTPClient supports file stream.
-            int httpResponseCode = http.sendRequest("POST", &file, fileSize);
-            
-            if (httpResponseCode == 200 || httpResponseCode == 201) {
-                Serial.println("Sync success, deleting file");
-                file.close();
-                SD_MMC.remove(filePath);
+            WiFiClient client;
+            if (client.connect(serverIP, serverPort)) {
+                String boundary = "----ESP32Boundary" + String(millis());
+                // Remove "/rec/" or leading "/" if present to get clean filename
+                String fileName = filePath;
+                if (fileName.startsWith("/rec/")) fileName = fileName.substring(5);
+                else if (fileName.startsWith("/")) fileName = fileName.substring(1);
+                
+                String header = "--" + boundary + "\r\n";
+                header += "Content-Disposition: form-data; name=\"file\"; filename=\"" + fileName + "\"\r\n";
+                header += "Content-Type: video/x-motion-jpeg\r\n\r\n";
+                String tail = "\r\n--" + boundary + "--\r\n";
+                
+                size_t fileSize = file.size();
+                uint32_t totalLength = header.length() + fileSize + tail.length();
+                
+                client.printf("POST /api/upload/stream HTTP/1.1\r\n");
+                client.printf("Host: %s:%d\r\n", serverIP, serverPort);
+                client.printf("Content-Type: multipart/form-data; boundary=%s\r\n", boundary.c_str());
+                client.printf("Content-Length: %d\r\n", totalLength);
+                client.printf("Connection: close\r\n\r\n");
+                
+                client.print(header);
+                
+                uint8_t buffer[1024];
+                while (file.available()) {
+                    size_t bytesRead = file.read(buffer, sizeof(buffer));
+                    client.write(buffer, bytesRead);
+                }
+                
+                client.print(tail);
+                
+                // Read response
+                unsigned long timeout = millis();
+                bool success = false;
+                while (client.connected() && millis() - timeout < 10000) {
+                    if (client.available()) {
+                        String line = client.readStringUntil('\n');
+                        if (line.indexOf("200 OK") != -1 || line.indexOf("201 Created") != -1) {
+                            success = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (success) {
+                    Serial.println("Sync success, deleting file");
+                    file.close();
+                    SD_MMC.remove(filePath);
+                } else {
+                    Serial.println("Sync failed or timeout");
+                    file.close();
+                }
+                client.stop();
             } else {
-                Serial.printf("Sync failed: %d\n", httpResponseCode);
+                Serial.println("Connection failed");
                 file.close();
             }
         } else {

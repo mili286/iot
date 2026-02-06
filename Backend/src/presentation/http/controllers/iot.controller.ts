@@ -7,7 +7,10 @@ import { SaveRecordingCommand } from "../../../application/use-cases/iot/command
 import { createResult } from "../infrastructure/custom-results";
 import { Result } from "../../../shared/result";
 import { Error } from "../../../shared/error";
-import { TriggerEventRequest, UploadStreamRequest } from "../requests/iot.requests";
+import {
+  TriggerEventRequest,
+  UploadStreamRequest,
+} from "../requests/iot.requests";
 
 @injectable()
 export class IoTController {
