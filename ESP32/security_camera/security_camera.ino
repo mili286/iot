@@ -7,15 +7,18 @@
 #include <algorithm>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
-#include "SD_MMC.h" // Use SD_MMC for faster writes (1-bit mode)
-#include "FS.h"
 #include <HTTPClient.h>
+#include <WebSocketsClient.h>
+#include "SD_MMC.h"
+#include "FS.h"
+#include <time.h>
 
 #define SDA 1                     
 #define SCL 2                     
 
 #define BUTTON_PIN 3  // Use GPIO 3 (RX) for button. NOTE: Serial RX will be disabled.
 
+// SD Card Pins (ESP32-S3)
 #define SD_MMC_CMD 38 
 #define SD_MMC_CLK 39 
 #define SD_MMC_D0  40 
@@ -24,46 +27,43 @@
 const char* ssid = "PAGE";
 const char* password = "page2022#";
 
-// Video server configuration
-const char* serverIP = "192.168.0.108"; 
-const int serverPort = 8080;
-const int httpPort = 8000; // FastAPI port
+// Server configuration
+const char* serverIP = "192.168.10.116"; 
+const int serverPort = 3000;
 
 uint8_t lcdAddress = 0x27;
 LiquidCrystal_I2C lcd(0x27,16,2);
 
 // Globals
-WiFiClient client;
+WebSocketsClient webSocket;
 bool isRecording = false;
-bool sdInitialized = false;
-unsigned long recordingStartTime = 0;
-int currentChunkIndex = 0;
-const int MAX_CHUNKS = 3;
-const unsigned long CHUNK_DURATION = 10000; // 10 seconds per chunk
-String chunkFiles[MAX_CHUNKS] = {"/chunk_0.mjpeg", "/chunk_1.mjpeg", "/chunk_2.mjpeg"};
+bool wsConnected = false;
+bool sdAvailable = false;
+bool isSyncing = false;
+unsigned long lastFrameTime = 0;
+const int frameInterval = 200; // ~5 fps
+unsigned long chunkStartTime = 0;
+const unsigned long CHUNK_DURATION = 5000; // 5 seconds
 File currentFile;
+String currentFileName = "";
 
 void cameraSetup();
-void connectToServer();
 void streamVideo();
-void startRecording();
-void stopRecording();
-void handleButton();
-void uploadChunks();
+void triggerEvent(String type);
+void uploadStoredFiles();
+String getTimestamp();
+void manageSDSpace();
+void onWebsocketEvent(WStype_t type, uint8_t * payload, size_t length);
 
 void setup() {
-  // Start Serial port
   Serial.begin(115200);
-
-  pinMode(BUTTON_PIN, INPUT_PULLUP); // Button to GND
-
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
   Wire.begin(SDA, SCL);           
   
-  // Test for common I2C LCD addresses
   if (!i2CAddrTest(lcdAddress)) {
     lcdAddress = 0x3F;
     if (!i2CAddrTest(lcdAddress)) {
-      Serial.println("LCD not found at common addresses!");
+      Serial.println("LCD not found!");
       lcdAddress = 0;
     }
   }
@@ -73,35 +73,17 @@ void setup() {
     lcd.init();
     lcd.backlight();
     lcd.setCursor(0,0);
-    lcd.print("Init...");
+    lcd.print("Initializing...");
   }   
 
   // Initialize SD Card
   SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
-  if (!SD_MMC.begin("/sdcard", true, true, SDMMC_FREQ_DEFAULT, 5)) {
-    Serial.println("Card Mount Failed");
-    if (lcdAddress != 0) {
-      lcd.setCursor(0,1);
-      lcd.print("SD Fail");
-    }
-  } else {
+  if (SD_MMC.begin("/sdcard", true, true, SDMMC_FREQ_DEFAULT, 5)) {
     Serial.println("SD Card Initialized");
-    
-    uint8_t cardType = SD_MMC.cardType();
-    if(cardType == CARD_NONE){
-        Serial.println("No SD_MMC card attached");
-        sdInitialized = false;
-    } else {
-        Serial.print("SD_MMC Card Type: ");
-        if(cardType == CARD_MMC) Serial.println("MMC"); 
-        else if(cardType == CARD_SD) Serial.println("SDSC"); 
-        else if(cardType == CARD_SDHC) Serial.println("SDHC"); 
-        else Serial.println("UNKNOWN"); 
-        
-        uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
-        Serial.printf("SD_MMC Card Size: %lluMB\n", cardSize);
-        sdInitialized = true;
-    }
+    sdAvailable = true;
+    SD_MMC.mkdir("/rec");
+  } else {
+    Serial.println("SD Card Failed");
   }
 
   setCpuFrequencyMhz(240);           
@@ -110,55 +92,82 @@ void setup() {
 
   cameraSetup();
 
-  // Connect to access point
-  Serial.println("Connecting");
-  if (lcdAddress != 0) {
-    lcd.setCursor(0,0);
-    lcd.print("Connecting WiFi");
-  }
+  Serial.println("Connecting WiFi");
   WiFi.begin(ssid, password);
-  while ( WiFi.status() != WL_CONNECTED ) {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
+  Serial.println("\nWiFi Connected");
 
-  Serial.println("Connected!");
-  Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
-  
+  // Sync time
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  time_t now = time(nullptr);
+  while (now < 8 * 3600 * 2) {
+    delay(500);
+    now = time(nullptr);
+  }
+
+  // Socket.io Setup (using WebSockets transport)
+  // EIO=4 is for Socket.io v4
+  webSocket.begin(serverIP, serverPort, "/socket.io/?EIO=4&transport=websocket");
+  webSocket.onEvent(onWebsocketEvent);
+  webSocket.setReconnectInterval(5000);
+
   if (lcdAddress != 0) {
-    lcd.setCursor(0,0);
-    lcd.print("WiFi OK");
+    lcd.clear();
+    lcd.print("Ready");
     lcd.setCursor(0,1);
     lcd.print(WiFi.localIP());
   }
-
-  connectToServer();
 }
 
 void loop() {
+  webSocket.loop();
   handleButton();
   streamVideo();
+
+  // If reconnected and not syncing, start sync
+  if (wsConnected && !isSyncing && sdAvailable) {
+    // uploadStoredFiles();
+  }
 }
 
-void connectToServer() {
-  if (lcdAddress != 0) {
-    lcd.setCursor(0,0);
-    lcd.print("Connecting Svr");
-  }
-  
-  while (!client.connect(serverIP, serverPort)) {
-    Serial.println("Connection to server failed, retrying...");
-    delay(2000);
-  }
-  
-  Serial.println("Connected to video server!");
-  
-  if (lcdAddress != 0) {
-    lcd.setCursor(0,0);
-    lcd.print("Streaming...    ");
-    lcd.setCursor(0,1);
-    lcd.print("Ready           ");
+void onWebsocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+  switch(type) {
+    case WStype_DISCONNECTED:
+      Serial.println("[WS] Disconnected!");
+      wsConnected = false;
+      if (lcdAddress != 0) {
+        lcd.setCursor(15,0);
+        lcd.print("X");
+      }
+      break;
+    case WStype_CONNECTED:
+      Serial.println("[WS] Connected!");
+      // Send Socket.io connection packet
+      webSocket.sendTXT("40");
+      wsConnected = true;
+      if (lcdAddress != 0) {
+        lcd.setCursor(15,0);
+        lcd.print("C");
+      }
+      break;
+    case WStype_TEXT:
+      // Serial.printf("[WS] Text: %s\n", payload);
+      // Handle Socket.io ping (2)
+      if (payload[0] == '2') {
+        webSocket.sendTXT("3"); // Send pong (3)
+      }
+      break;
+    case WStype_BIN:
+      break;
+    case WStype_ERROR:
+    case WStype_FRAGMENT_TEXT_START:
+    case WStype_FRAGMENT_BIN_START:
+    case WStype_FRAGMENT:
+    case WStype_FRAGMENT_FIN:
+      break;
   }
 }
 
@@ -166,155 +175,151 @@ void handleButton() {
     static int lastState = HIGH;
     int currentState = digitalRead(BUTTON_PIN);
 
-    Serial.println(currentState); 
-    
     if (lastState == HIGH && currentState == LOW) {
-        // Button pressed
-        if (!isRecording) {
-            startRecording();
-            // Notify server of manual start (optional, via command channel)
-            client.print("EVENT:START\n"); 
-        } else {
-            stopRecording();
+        Serial.println("Button Pressed");
+        isRecording = !isRecording;
+        
+        if (wsConnected) {
+            if (isRecording) {
+                webSocket.sendTXT("42[\"start-recording\"]");
+            } else {
+                webSocket.sendTXT("42[\"stop-recording\"]");
+            }
         }
-        delay(500); // Debounce
+
+        if (lcdAddress != 0) {
+            lcd.setCursor(0,0);
+            lcd.print(isRecording ? "REC [●]      " : "Ready        ");
+        }
+        delay(500);
     }
     lastState = currentState;
 }
 
-void startRecording() {
-    Serial.println("Entered funtion!");
-    if (!sdInitialized) return;
-    
-    Serial.println("Start Recording");
-    isRecording = true;
-    recordingStartTime = millis();
-    currentChunkIndex = 0;
-    
-    // Open first chunk
-    SD_MMC.remove(chunkFiles[0]);
-    currentFile = SD_MMC.open(chunkFiles[0], FILE_WRITE);
-    
-    if (lcdAddress != 0) {
-        lcd.setCursor(0,1);
-        lcd.print("REC [●]         ");
-    }
-}
-
-void stopRecording() {
-    if (!isRecording) return;
-    
-    Serial.println("Stop Recording");
-    isRecording = false;
-    if (currentFile) currentFile.close();
-    
-    if (lcdAddress != 0) {
-        lcd.setCursor(0,1);
-        lcd.print("Uploading...    ");
-    }
-    
-    // Upload files
-    uploadChunks();
-    
-    if (lcdAddress != 0) {
-        lcd.setCursor(0,1);
-        lcd.print("Ready           ");
-    }
-}
-
-void uploadChunks() {
-    // Pause streaming is implicit because we are in main loop
-    // But we need to make sure we don't block too long or watchdog triggers
-    
-    HTTPClient http;
-    // Upload all valid chunks
-    // Simple approach: Upload chunk 0, 1, 2...
-    // In a real rolling buffer, we'd order them by time. 
-    // Here we just upload what we have.
-    
-    for (int i = 0; i < MAX_CHUNKS; i++) {
-        if (SD_MMC.exists(chunkFiles[i])) {
-            Serial.printf("Uploading %s\n", chunkFiles[i].c_str());
-            
-            http.begin("http://" + String(serverIP) + ":" + String(httpPort) + "/upload");
-            
-            File file = SD_MMC.open(chunkFiles[i]);
-            if (file) {
-                // Manually construct multipart (simplified: just send raw body or use library if available)
-                // HTTPClient supports sending stream
-                http.addHeader("Content-Type", "video/x-motion-jpeg");
-                http.addHeader("X-Filename", chunkFiles[i].substring(1)); // Remove leading slash
-                
-                int httpResponseCode = http.sendRequest("POST", &file, file.size());
-                
-                if (httpResponseCode > 0) {
-                    Serial.printf("Response: %d\n", httpResponseCode);
-                } else {
-                    Serial.printf("Error: %s\n", http.errorToString(httpResponseCode).c_str());
-                }
-                file.close();
-            }
-            http.end();
-        }
+void triggerEvent(String type) {
+    if (wsConnected) {
+        // Example of sending an event with data
+        String timestamp = getTimestamp();
+        String payload = "42[\"trigger-event\",{\"type\":\"" + type + "\",\"timestamp\":\"" + timestamp + "\"}]";
+        webSocket.sendTXT(payload);
+    } else {
+        Serial.println("Offline: Event cached");
     }
 }
 
 void streamVideo() {
-  if (!client.connected()) {
-    connectToServer();
-    return;
-  }
-  
-  // Check for commands
-  if (client.available()) {
-      String line = client.readStringUntil('\n');
-      line.trim();
-      if (line == "CMD:START") {
-          startRecording();
-      } else if (line == "CMD:STOP") {
-          stopRecording();
-      }
-  }
+    if (millis() - lastFrameTime < frameInterval) return;
+    lastFrameTime = millis();
 
-  camera_fb_t *fb = esp_camera_fb_get();
-  if (fb != NULL) {
-    if (fb->len > 100000) { 
-      esp_camera_fb_return(fb);
-      return;
-    }
-    
-    // Send to Server
-    uint32_t frame_size = fb->len;
-    client.write((uint8_t*)&frame_size, 4);
-    
-    size_t bytes_sent = 0;
-    while (bytes_sent < fb->len) {
-      size_t chunk_size = std::min((size_t)1460, fb->len - bytes_sent); 
-      size_t sent = client.write((uint8_t*)fb->buf + bytes_sent, chunk_size);
-      if (sent == 0) break;
-      bytes_sent += sent;
-    }
-    
-    // Record to SD
-    if (isRecording && sdInitialized && currentFile) {
-        // Write frame to file (simple append)
-        currentFile.write(fb->buf, fb->len);
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (!fb) return;
+
+    if (wsConnected) {
+        // Stream over Socket.io (v4 binary protocol)
+        // 1. Send placeholder message
+        webSocket.sendTXT("451-[\"stream-data\",{\"_placeholder\":true,\"num\":0}]");
+        // 2. Send the binary data
+        webSocket.sendBIN(fb->buf, fb->len);
         
-        // Rolling chunk logic
-        if (millis() - recordingStartTime > CHUNK_DURATION) {
+        if (currentFile) {
             currentFile.close();
-            currentChunkIndex = (currentChunkIndex + 1) % MAX_CHUNKS;
+            currentFileName = "";
+        }
+    } else if (sdAvailable) {
+        // Fallback: Record to SD in 5s chunks
+        if (currentFileName == "" || (millis() - chunkStartTime > CHUNK_DURATION)) {
+            if (currentFile) currentFile.close();
             
-            // Overwrite next chunk
-            SD_MMC.remove(chunkFiles[currentChunkIndex]);
-            currentFile = SD_MMC.open(chunkFiles[currentChunkIndex], FILE_WRITE);
+            manageSDSpace();
             
-            recordingStartTime = millis();
+            chunkStartTime = millis();
+            currentFileName = "/rec/chunk_" + String(time(nullptr)) + ".mjpeg";
+            currentFile = SD_MMC.open(currentFileName, FILE_WRITE);
+            Serial.printf("Starting new chunk: %s\n", currentFileName.c_str());
+        }
+        
+        if (currentFile) {
+            currentFile.write(fb->buf, fb->len);
         }
     }
-    
+
     esp_camera_fb_return(fb);
-  }
+}
+
+void manageSDSpace() {
+    // Check space and delete oldest if > 90% full
+    uint64_t total = SD_MMC.totalBytes();
+    uint64_t used = SD_MMC.usedBytes();
+    
+    if (used > total * 0.9) {
+        Serial.println("SD Card almost full, cleaning up...");
+        File root = SD_MMC.open("/rec");
+        String oldestFile = "";
+        time_t oldestTime = 0xFFFFFFFF;
+        
+        File file = root.openNextFile();
+        while (file) {
+            String name = String(file.name());
+            if (name.startsWith("/rec/chunk_")) {
+                time_t t = name.substring(11, name.length() - 6).toInt();
+                if (t < oldestTime) {
+                    oldestTime = t;
+                    oldestFile = name;
+                }
+            }
+            file = root.openNextFile();
+        }
+        
+        if (oldestFile != "") {
+            Serial.printf("Deleting oldest chunk: %s\n", oldestFile.c_str());
+            SD_MMC.remove(oldestFile);
+        }
+    }
+}
+
+void uploadStoredFiles() {
+    isSyncing = true;
+    File root = SD_MMC.open("/rec");
+    File file = root.openNextFile();
+    
+    while (file) {
+        if (!wsConnected) break; // Stop if lost connection again
+        
+        String filePath = String(file.name());
+        if (filePath.endsWith(".mjpeg")) {
+            Serial.printf("Syncing: %s\n", filePath.c_str());
+            
+            HTTPClient http;
+            String url = "http://" + String(serverIP) + ":" + String(serverPort) + "/api/upload/stream";
+            http.begin(url);
+            
+            String boundary = "----ESP32Boundary" + String(millis());
+            http.addHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
+            
+            String header = "--" + boundary + "\r\n";
+            header += "Content-Disposition: form-data; name=\"file\"; filename=\"" + filePath.substring(5) + "\"\r\n";
+            header += "Content-Type: video/x-motion-jpeg\r\n\r\n";
+            String tail = "\r\n--" + boundary + "--\r\n";
+            
+            size_t fileSize = file.size();
+            // We can't easily load whole file into RAM, use stream upload if possible
+            // Or upload in chunks. HTTPClient supports file stream.
+            int httpResponseCode = http.sendRequest("POST", &file, fileSize);
+            
+            if (httpResponseCode == 200 || httpResponseCode == 201) {
+                Serial.println("Sync success, deleting file");
+                file.close();
+                SD_MMC.remove(filePath);
+            } else {
+                Serial.printf("Sync failed: %d\n", httpResponseCode);
+                file.close();
+            }
+        } else {
+            file.close();
+        }
+        file = root.openNextFile();
+    }
+    isSyncing = false;
 }
 
 void cameraSetup() {
@@ -342,13 +347,20 @@ void cameraSetup() {
   config.frame_size = FRAMESIZE_QVGA;   
   config.pixel_format = PIXFORMAT_JPEG; 
   config.grab_mode = CAMERA_GRAB_LATEST; 
-  config.fb_location = CAMERA_FB_IN_PSRAM; 
-  config.jpeg_quality = 10;              
-  config.fb_count = 2;                   
+  
+  if (psramFound()) {
+    config.fb_location = CAMERA_FB_IN_PSRAM; 
+    config.jpeg_quality = 10;              
+    config.fb_count = 2;                   
+  } else {
+    config.fb_location = CAMERA_FB_IN_DRAM; 
+    config.jpeg_quality = 12;              
+    config.fb_count = 1;
+  }
 
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
-      Serial.printf("Camera init failed with error 0x%x", err);
+      Serial.printf("Camera init failed with error 0x%x\n", err);
       return;
   }
   
@@ -356,8 +368,16 @@ void cameraSetup() {
   s->set_framesize(s, FRAMESIZE_QVGA); 
 }
 
+String getTimestamp() {
+    time_t now = time(nullptr);
+    struct tm timeinfo;
+    gmtime_r(&now, &timeinfo);
+    char buf[32];
+    strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
+    return String(buf);
+}
+
 bool i2CAddrTest(uint8_t addr) {
   Wire.beginTransmission(addr);
-  uint8_t error = Wire.endTransmission();
-  return (error == 0);
+  return (Wire.endTransmission() == 0);
 }

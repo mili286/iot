@@ -1,13 +1,33 @@
 import { Request } from "express";
 
-interface RefreshTokenRequest
-  extends Request<
-    any,
-    any,
-    {
-      authToken: string;
-      refreshToken: string;
-    }
-  > {}
+interface LoginRequest extends Request<
+  any,
+  any,
+  {
+    username: string;
+    password: string;
+  }
+> {}
 
-export { RefreshTokenRequest };
+interface RegisterRequest extends Request<
+  any,
+  any,
+  {
+    username: string;
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+  }
+> {}
+
+interface RefreshTokenRequest extends Request<
+  any,
+  any,
+  {
+    authToken: string;
+    refreshToken: string;
+  }
+> {}
+
+export { LoginRequest, RegisterRequest, RefreshTokenRequest };

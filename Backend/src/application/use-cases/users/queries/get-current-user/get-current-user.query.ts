@@ -1,6 +1,9 @@
 import { IQuery } from "../../../../cqrs/interfaces";
-import { User } from "../../../../../domain/entities/users/user.entity";
+import { Validate } from "../../../../cqrs/decorators";
+import { UserDto } from "./get-current-user.dto";
+import { getCurrentUserSchema } from "./get-current-user.validation";
 
-export class GetCurrentUserQuery implements IQuery<User> {
+@Validate(getCurrentUserSchema)
+export class GetCurrentUserQuery implements IQuery<UserDto> {
   constructor() {}
 }

@@ -7,4 +7,10 @@ export const TYPES = {
   AuthController: Symbol.for("AuthController"),
   UserContext: Symbol.for("UserContext"),
   AuthRepository: Symbol.for("AuthRepository"),
+  IoTEventRepository: Symbol.for("IoTEventRepository"),
+  RecordingRepository: Symbol.for("RecordingRepository"),
+  SocketService: Symbol.for("SocketService"),
+  VideoService: Symbol.for("VideoService"),
+  IoTController: Symbol.for("IoTController"),
+  RecordingController: Symbol.for("RecordingController"),
 };

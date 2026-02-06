@@ -8,8 +8,8 @@ import { Validator } from "./validator";
 export class CommandBus {
   constructor(@inject(Container) private container: Container) {}
 
-  async execute<TCommand extends ICommand, TResponse = void>(
-    command: TCommand,
+  async execute<TResponse = void>(
+    command: ICommand<TResponse>,
   ): Promise<Result<TResponse>> {
     const commandClass = command.constructor;
 
@@ -22,9 +22,9 @@ export class CommandBus {
       }
     }
 
-    const handler = this.container.get<ICommandHandler<TCommand, TResponse>>(
-      this.getCommandIdentifier(commandClass),
-    );
+    const handler = this.container.get<
+      ICommandHandler<ICommand<TResponse>, TResponse>
+    >(this.getCommandIdentifier(commandClass));
     return handler.handle(command);
   }
 
@@ -37,8 +37,8 @@ export class CommandBus {
 export class QueryBus {
   constructor(@inject(Container) private container: Container) {}
 
-  async execute<TQuery extends IQuery<TResponse>, TResponse>(
-    query: TQuery,
+  async execute<TResponse>(
+    query: IQuery<TResponse>,
   ): Promise<Result<TResponse>> {
     const queryClass = query.constructor;
 
@@ -51,9 +51,9 @@ export class QueryBus {
       }
     }
 
-    const handler = this.container.get<IQueryHandler<TQuery, TResponse>>(
-      this.getQueryIdentifier(queryClass),
-    );
+    const handler = this.container.get<
+      IQueryHandler<IQuery<TResponse>, TResponse>
+    >(this.getQueryIdentifier(queryClass));
     return handler.handle(query);
   }
 

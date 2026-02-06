@@ -6,6 +6,7 @@ import swaggerJSDoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import userRoutes from "./presentation/http/routes/user.routes";
 import authRoutes from "./presentation/http/routes/auth.routes";
+import iotRoutes from "./presentation/http/routes/iot.routes";
 import { errorHandler } from "./presentation/http/middleware/error-handler.middleware";
 import passport from "passport";
 import { configurePassport } from "./infrastructure/auth/passport.config";
@@ -18,6 +19,7 @@ const app: Application = express();
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static("public"));
 
 app.use(passport.initialize());
 configurePassport();
@@ -89,6 +91,7 @@ app.get("/health", (req: Request, res: Response) => {
 // Routes
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
+app.use("/api", iotRoutes);
 
 // Error handling
 app.use(errorHandler);

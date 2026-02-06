@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IoT Live Stream Viewer</title>
+    <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        background-color: #1a1a1a;
+        color: #ffffff;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .container {
+        text-align: center;
+        background: #2d2d2d;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        max-width: 90vw;
+      }
+      h1 {
+        margin-bottom: 1.5rem;
+        color: #4caf50;
+      }
+      .stream-container {
+        position: relative;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+        min-width: 640px;
+        min-height: 480px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #stream-view {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+      .status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 1rem;
+      }
+      .dot {
+        height: 12px;
+        width: 12px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .online {
+        background-color: #4caf50;
+      }
+      .offline {
+        background-color: #f44336;
+      }
+      .controls {
+        margin-top: 1.5rem;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+      }
+      button {
+        padding: 0.8rem 1.5rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.2s;
+      }
+      .btn-record {
+        background-color: #f44336;
+        color: white;
+      }
+      .btn-record.active {
+        background-color: #b71c1c;
+        box-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+      }
+      .btn-record:hover {
+        opacity: 0.9;
+      }
+
+      #no-signal {
+        color: #666;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>IoT Live Stream</h1>
+
+      <div class="stream-container">
+        <img id="stream-view" src="" alt="Live Stream" />
+        <div id="no-signal">Waiting for stream...</div>
+      </div>
+
+      <div class="status">
+        <span id="status-dot" class="dot offline"></span>
+        <span id="status-text">Disconnected</span>
+      </div>
+
+      <div class="controls">
+        <button id="btn-toggle-record" class="btn-record">
+          Start Recording
+        </button>
+      </div>
+    </div>
+
+    <script>
+      const socket = io();
+      const streamImg = document.getElementById("stream-view");
+      const noSignal = document.getElementById("no-signal");
+      const statusDot = document.getElementById("status-dot");
+      const statusText = document.getElementById("status-text");
+      const btnRecord = document.getElementById("btn-toggle-record");
+
+      let isRecording = false;
+      let lastFrameTime = Date.now();
+
+      // Connect and join room
+      socket.on("connect", () => {
+        statusDot.className = "dot online";
+        statusText.innerText = "Connected";
+        socket.emit("join-live-stream");
+      });
+
+      socket.on("disconnect", () => {
+        statusDot.className = "dot offline";
+        statusText.innerText = "Disconnected";
+        streamImg.style.display = "none";
+        noSignal.style.display = "block";
+      });
+
+      // Receive stream data
+      socket.on("live-stream-data", (data) => {
+        // data is an ArrayBuffer from the server
+        const blob = new Blob([data], { type: "image/jpeg" });
+        const url = URL.createObjectURL(blob);
+
+        const oldUrl = streamImg.src;
+        streamImg.src = url;
+        streamImg.style.display = "block";
+        noSignal.style.display = "none";
+
+        // Clean up old object URL to prevent memory leaks
+        if (oldUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(oldUrl);
+        }
+
+        lastFrameTime = Date.now();
+      });
+
+      // Recording status
+      socket.on("recording-status", (status) => {
+        isRecording = status.active;
+        if (isRecording) {
+          btnRecord.innerText = "Stop Recording";
+          btnRecord.classList.add("active");
+        } else {
+          btnRecord.innerText = "Start Recording";
+          btnRecord.classList.remove("active");
+        }
+      });
+
+      // Controls
+      btnRecord.onclick = () => {
+        if (isRecording) {
+          socket.emit("stop-recording");
+        } else {
+          socket.emit("start-recording");
+        }
+      };
+
+      // Check for stale stream
+      setInterval(() => {
+        if (
+          Date.now() - lastFrameTime > 3000 &&
+          streamImg.style.display !== "none"
+        ) {
+          streamImg.style.display = "none";
+          noSignal.style.display = "block";
+          noSignal.innerText = "Signal Lost...";
+        }
+      }, 1000);
+    </script>
+  </body>
+</html>

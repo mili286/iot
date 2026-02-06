@@ -6,20 +6,20 @@ import { createResult } from "../infrastructure/custom-results";
 import { LoginCommand } from "../../../application/use-cases/auth/commands/login/login.command";
 import { RegisterUserCommand } from "../../../application/use-cases/auth/commands/register/register-user.command";
 import { RefreshTokenCommand } from "../../../application/use-cases/auth/commands/refresh-token/refresh-token.command";
-import { RefreshTokenRequest } from "../requests/auth.requests";
+import { LoginRequest, RegisterRequest, RefreshTokenRequest } from "../requests/auth.requests";
 
 @injectable()
 export class AuthController {
   constructor(@inject(TYPES.CommandBus) private commandBus: CommandBus) {}
 
-  async login(req: Request, res: Response): Promise<void> {
+  async login(req: LoginRequest, res: Response): Promise<void> {
     const result = await this.commandBus.execute(
       new LoginCommand(req.body.username, req.body.password),
     );
     createResult(res, result);
   }
 
-  async register(req: Request, res: Response): Promise<void> {
+  async register(req: RegisterRequest, res: Response): Promise<void> {
     const result = await this.commandBus.execute(
       new RegisterUserCommand(
         req.body.username,
