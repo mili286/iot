@@ -8,7 +8,7 @@ const authController = container.get<AuthController>(TYPES.AuthController);
 
 /**
  * @openapi
- * /auth/login:
+ * /api/auth/login:
  *   post:
  *     tags:
  *       - Auth
@@ -34,7 +34,7 @@ router.post("/login", (req, res) => authController.login(req, res));
 
 /**
  * @openapi
- * /auth/register:
+ * /api/auth/register:
  *   post:
  *     tags:
  *       - Auth
@@ -64,7 +64,7 @@ router.post("/register", (req, res) => authController.register(req, res));
 
 /**
  * @openapi
- * /auth/refresh-token:
+ * /api/auth/refresh-token:
  *   post:
  *     tags:
  *       - Auth

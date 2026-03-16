@@ -19,7 +19,7 @@ export class GetRecordingsHandler implements IQueryHandler<
   ) {}
 
   async handle(query: GetRecordingsQuery): Promise<Result<RecordingDto[]>> {
-    const recordings = await this.recordingRepository.findAll();
+    const recordings = await this.recordingRepository.findAll(query.page, query.limit);
     const dtos: RecordingDto[] = recordings.map((recording) => ({
       id: recording._id.toString(),
       filename: recording.filename,

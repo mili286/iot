@@ -9,6 +9,7 @@ import authRoutes from "./presentation/http/routes/auth.routes";
 import iotRoutes from "./presentation/http/routes/iot.routes";
 import { errorHandler } from "./presentation/http/middleware/error-handler.middleware";
 import passport from "passport";
+import cors from "cors";
 import { configurePassport } from "./infrastructure/auth/passport.config";
 
 configDotenv();
@@ -20,6 +21,7 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
+app.use(cors());
 
 app.use(passport.initialize());
 configurePassport();
@@ -89,8 +91,8 @@ app.get("/health", (req: Request, res: Response) => {
 });
 
 // Routes
-app.use("/auth", authRoutes);
-app.use("/users", userRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api", iotRoutes);
 
 // Error handling

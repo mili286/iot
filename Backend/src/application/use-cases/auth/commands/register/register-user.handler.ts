@@ -9,20 +9,24 @@ import { RegisterUserDto } from "./register-user.dto";
 
 @injectable()
 @CommandHandler(RegisterUserCommand)
-export class RegisterUserHandler
-  implements ICommandHandler<RegisterUserCommand, RegisterUserDto>
-{
+export class RegisterUserHandler implements ICommandHandler<
+  RegisterUserCommand,
+  RegisterUserDto
+> {
   constructor(
     @inject(TYPES.UserRepository) private userRepository: IUserRepository,
   ) {}
 
   async handle(command: RegisterUserCommand): Promise<Result<RegisterUserDto>> {
+    const [firstName, ...lastNameParts] = command.fullName.split(" ");
+    const lastName = lastNameParts.join(" ") || firstName;
+
     const user = await this.userRepository.register(
       {
         username: command.username,
         email: command.email,
-        firstName: command.firstName,
-        lastName: command.lastName,
+        firstName,
+        lastName,
       },
       command.password,
     );

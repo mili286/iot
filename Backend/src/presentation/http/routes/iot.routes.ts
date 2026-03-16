@@ -69,4 +69,25 @@ router.get("/recordings/:id", (req, res) =>
   recordingController.streamRecording(req, res),
 );
 
+/**
+ * @openapi
+ * /api/recordings/{id}:
+ *   delete:
+ *     description: Deletes a specific recording
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Recording deleted successfully
+ *       404:
+ *         description: Recording not found
+ */
+router.delete("/recordings/:id", (req, res) =>
+  recordingController.deleteRecording(req, res),
+);
+
 export default router;

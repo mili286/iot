@@ -19,6 +19,10 @@ export class UserRepository implements IUserRepository {
     return user;
   }
 
+  async findAll(): Promise<User[]> {
+    return await userEntity.find();
+  }
+
   async register(user: Partial<User>, password: string): Promise<User> {
     const newUser = new userEntity(user);
     return await userEntity.register(newUser, password);

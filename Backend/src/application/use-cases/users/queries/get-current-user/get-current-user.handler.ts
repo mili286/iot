@@ -40,6 +40,7 @@ export class GetCurrentUserHandler implements IQueryHandler<
     return Result.success({
       id: user.id,
       username: user.username,
+      name: `${user.firstName} ${user.lastName}`,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,

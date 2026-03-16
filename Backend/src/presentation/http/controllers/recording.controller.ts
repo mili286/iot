@@ -1,23 +1,30 @@
 import { Request, Response } from "express";
 import { injectable, inject } from "inversify";
 import { TYPES } from "../../../shared/types/common.types";
-import { QueryBus } from "../../../application/cqrs/bus";
+import { QueryBus, CommandBus } from "../../../application/cqrs/bus";
 import { GetRecordingsQuery } from "../../../application/use-cases/iot/queries/get-recordings/get-recordings.query";
 import { GetRecordingByIdQuery } from "../../../application/use-cases/iot/queries/get-recording-by-id/get-recording-by-id.query";
+import { DeleteRecordingCommand } from "../../../application/use-cases/iot/commands/delete-recording/delete-recording.command";
 import { createResult } from "../infrastructure/custom-results";
 import path from "path";
 import fs from "fs";
 import { RecordingDto } from "../../../application/use-cases/iot/queries/get-recordings/get-recordings.dto";
 import { RecordingDetailDto } from "../../../application/use-cases/iot/queries/get-recording-by-id/get-recording-by-id.dto";
-import { GetRecordingsRequest, StreamRecordingRequest } from "../requests/recording.requests";
+import { GetRecordingsRequest, StreamRecordingRequest, DeleteRecordingRequest } from "../requests/recording.requests";
 
 @injectable()
 export class RecordingController {
-  constructor(@inject(TYPES.QueryBus) private queryBus: QueryBus) {}
+  constructor(
+    @inject(TYPES.QueryBus) private queryBus: QueryBus,
+    @inject(TYPES.CommandBus) private commandBus: CommandBus,
+  ) {}
 
   async getRecordings(req: GetRecordingsRequest, res: Response): Promise<void> {
+    const page = req.query.page ? parseInt(req.query.page, 10) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 10;
+    
     const result = await this.queryBus.execute<RecordingDto[]>(
-      new GetRecordingsQuery(),
+      new GetRecordingsQuery(page, limit),
     );
     createResult(res, result);
   }
@@ -67,5 +74,13 @@ export class RecordingController {
       res.writeHead(200, head);
       fs.createReadStream(filePath).pipe(res);
     }
+  }
+
+  async deleteRecording(req: DeleteRecordingRequest, res: Response): Promise<void> {
+    const { id } = req.params;
+    const result = await this.commandBus.execute(
+      new DeleteRecordingCommand(id.toString()),
+    );
+    createResult(res, result);
   }
 }

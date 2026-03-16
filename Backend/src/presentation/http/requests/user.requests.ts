@@ -15,4 +15,15 @@ interface CreateUserRequest
 
 interface GetCurrentUserRequest extends Request {}
 
-export { CreateUserRequest, GetCurrentUserRequest };
+interface GetUsersRequest extends Request {}
+
+interface GetUserByIdRequest
+  extends Request<
+    {
+      id: string;
+    },
+    any,
+    any
+  > {}
+
+export { CreateUserRequest, GetCurrentUserRequest, GetUsersRequest, GetUserByIdRequest };
