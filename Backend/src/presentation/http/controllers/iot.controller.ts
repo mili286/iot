@@ -4,6 +4,7 @@ import { TYPES } from "../../../shared/types/common.types";
 import { CommandBus } from "../../../application/cqrs/bus";
 import { TriggerEventCommand } from "../../../application/use-cases/iot/commands/trigger-event/trigger-event.command";
 import { SaveRecordingCommand } from "../../../application/use-cases/iot/commands/save-recording/save-recording.command";
+import { ProcessMjpegUploadCommand } from "../../../application/use-cases/iot/commands/process-mjpeg-upload/process-mjpeg-upload.command";
 import { createResult } from "../infrastructure/custom-results";
 import { Result } from "../../../shared/result";
 import { Error } from "../../../shared/error";
@@ -47,7 +48,8 @@ export class IoTController {
     const triggerType = req.body.triggerType || "unknown";
 
     // Extract recording date from filename (Unix timestamp)
-    const nameOnly = path.parse(filename).name;
+    const originalName = req.file.originalname || filename;
+    const nameOnly = path.parse(originalName).name;
     let recordingDate = new Date();
     
     // Check if filename is a numeric string (Unix timestamp in seconds)
@@ -60,7 +62,7 @@ export class IoTController {
     }
 
     const result = await this.commandBus.execute(
-      new SaveRecordingCommand(
+      new ProcessMjpegUploadCommand(
         filename,
         filePath,
         mimetype,
@@ -69,6 +71,7 @@ export class IoTController {
         triggerType,
         recordingDate,
         new Date(),
+        (req as any).user?.id,
       ),
     );
     createResult(res, result);

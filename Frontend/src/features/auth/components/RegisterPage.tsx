@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, Video, Check, X } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useRegisterMutation } from '../api/authApi';
-import { Button } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Label } from '../../../components/ui/label';
 import { Checkbox } from '../../../components/ui/checkbox';
@@ -61,7 +61,7 @@ export function RegisterPage() {
           <div className="inline-flex justify-center items-center bg-[#2563EB] shadow-lg mb-4 rounded-xl w-16 h-16">
             <Video className="w-8 h-8 text-white" />
           </div>
-          <h1 className="font-bold text-foreground text-2xl">SecureWatch</h1>
+          <h1 className="font-bold text-foreground text-2xl">Secure Watch</h1>
           <p className="mt-2 text-muted-foreground">Create your account</p>
         </div>
 
@@ -225,7 +225,7 @@ export function RegisterPage() {
         </div>
 
         <p className="mt-6 text-muted-foreground text-xs text-center">
-          © 2026 SecureWatch. All rights reserved.
+          © 2026 Secure Watch. All rights reserved.
         </p>
       </div>
     </div>

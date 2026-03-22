@@ -11,6 +11,7 @@ export const TYPES = {
   RecordingRepository: Symbol.for("RecordingRepository"),
   SocketService: Symbol.for("SocketService"),
   VideoService: Symbol.for("VideoService"),
+  MjpegProcessorService: Symbol.for("MjpegProcessorService"),
   IoTController: Symbol.for("IoTController"),
   RecordingController: Symbol.for("RecordingController"),
   SystemParametersRepository: Symbol.for("SystemParametersRepository"),

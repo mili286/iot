@@ -14,14 +14,53 @@ import {
 } from '../../components/ui/select';
 import { toast } from 'sonner';
 import { Input } from '../../components/ui/Input';
+import { useDebounce } from '../../hooks/useDebounce';
 
 export function RecordingsListPage() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const limit = 12; // Use a multiple of 4 for grid layout
-  const { data: recordings = [], currentData, isLoading, isFetching, isError } = useGetRecordingsQuery({ page, limit });
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  
+  const [filterTrigger, setFilterTrigger] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('newest');
+  const [dateRange, setDateRange] = useState<string>('all');
+
+  const { startDate, endDate } = useMemo(() => {
+    if (dateRange === 'all') return { startDate: undefined, endDate: undefined };
+    
+    const now = new Date();
+    const start = new Date(now);
+    
+    if (dateRange === 'today') {
+      start.setHours(0, 0, 0, 0);
+    } else if (dateRange === 'week') {
+      start.setDate(now.getDate() - 7);
+    } else if (dateRange === 'month') {
+      start.setMonth(now.getMonth() - 1);
+    }
+    
+    return { startDate: start.toISOString(), endDate: now.toISOString() };
+  }, [dateRange]);
+
+  const { data: recordings = [], currentData, isLoading, isFetching, isError } = useGetRecordingsQuery({ 
+    page, 
+    limit, 
+    searchTerm: debouncedSearchQuery,
+    triggerType: filterTrigger,
+    sortBy,
+    startDate,
+    endDate
+  });
   const [deleteRecording] = useDeleteRecordingMutation();
   const [hasMore, setHasMore] = useState(true);
+
+  // Reset page and hasMore when search term or filters change
+  useEffect(() => {
+    setPage(1);
+    setHasMore(true);
+  }, [debouncedSearchQuery, filterTrigger, sortBy, dateRange]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback(
@@ -42,68 +81,14 @@ export function RecordingsListPage() {
 
   // Update hasMore based on the last response
   useEffect(() => {
-    if (currentData && currentData.length < limit) {
-      setHasMore(false);
+    if (currentData) {
+      if (currentData.length < limit) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
     }
   }, [currentData, limit]);
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterTrigger, setFilterTrigger] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('newest');
-  const [dateRange, setDateRange] = useState<string>('all');
-
-  // Filter and sort recordings
-  const filteredRecordings = useMemo(() => {
-    let filtered = [...recordings];
-
-    // Apply search
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (r) =>
-          (r.filename && r.filename.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (r.triggerType && r.triggerType.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
-
-    // Apply trigger filter
-    if (filterTrigger !== 'all') {
-      filtered = filtered.filter((r) => r.triggerType === filterTrigger);
-    }
-
-    // Apply date range filter
-    if (dateRange !== 'all') {
-      const today = new Date();
-      filtered = filtered.filter((r) => {
-        const rDate = new Date(r.createdAt);
-        if (dateRange === 'today') {
-          return rDate.toDateString() === today.toDateString();
-        } else if (dateRange === 'week') {
-          const weekAgo = new Date(today);
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          return rDate >= weekAgo;
-        } else if (dateRange === 'month') {
-          const monthAgo = new Date(today);
-          monthAgo.setMonth(monthAgo.getMonth() - 1);
-          return rDate >= monthAgo;
-        }
-        return true;
-      });
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      if (sortBy === 'newest') {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      } else if (sortBy === 'oldest') {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      } else if (sortBy === 'duration') {
-        return b.duration - a.duration;
-      }
-      return 0;
-    });
-
-    return filtered;
-  }, [recordings, searchQuery, filterTrigger, sortBy, dateRange]);
 
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -170,7 +155,7 @@ export function RecordingsListPage() {
 
   const handleDownload = (recording: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/recordings/${recording.id}`;
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/recordings/${recording.id}?download=true`;
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', recording.filename);
@@ -179,7 +164,7 @@ export function RecordingsListPage() {
     document.body.removeChild(link);
   };
 
-  if (isLoading) return <div className="py-20 text-center">Loading recordings...</div>;
+  if (isLoading && page === 1) return <div className="py-20 text-center">Loading recordings...</div>;
   if (isError) return <div className="py-20 text-destructive text-center">Error loading recordings</div>;
 
   return (
@@ -201,7 +186,7 @@ export function RecordingsListPage() {
               <div className="relative">
                 <Search className="top-1/2 left-3 absolute w-4 h-4 text-muted-foreground -translate-y-1/2" />
                 <Input
-                  placeholder="Search by filename or trigger type..."
+                  placeholder="Search by filename..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -239,7 +224,7 @@ export function RecordingsListPage() {
           <div className="flex justify-between items-center mt-4 pt-4 border-border border-t">
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
               <Filter className="w-4 h-4" />
-              <span>{filteredRecordings.length} recording(s) found</span>
+              <span>{recordings.length} recording(s) found</span>
             </div>
 
             {/* Sort */}
@@ -258,13 +243,13 @@ export function RecordingsListPage() {
       </Card>
 
       {/* Recordings Grid */}
-      {filteredRecordings.length > 0 ? (
+      {recordings.length > 0 ? (
         <div className="space-y-8">
           <div className="gap-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredRecordings.map((recording, index) => (
+            {recordings.map((recording, index) => (
               <Card
                 key={recording.id}
-                ref={index === filteredRecordings.length - 1 ? lastElementRef : null}
+                ref={index === recordings.length - 1 ? lastElementRef : null}
                 className="group hover:shadow-lg overflow-hidden transition-all duration-200 cursor-pointer"
                 onClick={() => navigate(`/recordings/${recording.id}`)}
               >
@@ -368,7 +353,7 @@ export function RecordingsListPage() {
           </div>
         )}
 
-        {!hasMore && filteredRecordings.length > 0 && (
+        {!hasMore && recordings.length > 0 && (
           <p className="py-8 text-muted-foreground text-center">
             No more recordings to load.
           </p>

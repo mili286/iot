@@ -7,6 +7,11 @@ interface GetRecordingsRequest extends Request<
   {
     page?: string;
     limit?: string;
+    searchTerm?: string;
+    triggerType?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
   }
 > {}
 
@@ -16,7 +21,10 @@ interface StreamRecordingRequest
       id: string;
     },
     any,
-    any
+    any,
+    {
+      download?: string;
+    }
   > {}
 
 interface DeleteRecordingRequest

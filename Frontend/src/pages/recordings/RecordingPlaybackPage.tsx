@@ -52,7 +52,7 @@ export function RecordingPlaybackPage() {
   if (isLoading) return <div className="text-center py-20">Loading recording...</div>;
   if (isError || !recording) return <div className="text-center py-20 text-destructive">Recording not found</div>;
 
-  const videoUrl = `${process.env.VITE_API_URL || 'http://localhost:3000/api'}/recordings/${recording.id}`;
+  const videoUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/recordings/${recording.id}`;
 
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -160,7 +160,7 @@ export function RecordingPlaybackPage() {
 
   const handleDownload = () => {
     const link = document.createElement('a');
-    link.href = videoUrl;
+    link.href = `${videoUrl}?download=true`;
     link.setAttribute('download', recording.filename);
     document.body.appendChild(link);
     link.click();

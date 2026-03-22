@@ -69,9 +69,9 @@ router.get("/recordings", (req, res) =>
 
 /**
  * @openapi
- * /api/recordings/{id}:
+ * /api/recordings/{id}/details:
  *   get:
- *     description: Streams a specific recording
+ *     description: Returns metadata of a specific recording
  *     parameters:
  *       - in: path
  *         name: id
@@ -80,7 +80,32 @@ router.get("/recordings", (req, res) =>
  *           type: string
  *     responses:
  *       200:
- *         description: Video stream
+ *         description: Recording details
+ *       404:
+ *         description: Recording not found
+ */
+router.get("/recordings/:id/details", (req, res) =>
+  recordingController.getRecordingById(req, res),
+);
+
+/**
+ * @openapi
+ * /api/recordings/{id}:
+ *   get:
+ *     description: Streams or downloads a specific recording
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: download
+ *         schema:
+ *           type: boolean
+ *     responses:
+ *       200:
+ *         description: Video stream or file download
  */
 router.get("/recordings/:id", (req, res) =>
   recordingController.streamRecording(req, res),

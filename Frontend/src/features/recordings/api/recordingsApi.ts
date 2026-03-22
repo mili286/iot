@@ -28,10 +28,34 @@ export const recordingsApi = createApi({
   }),
   tagTypes: ['Recording'],
   endpoints: (builder) => ({
-    getRecordings: builder.query<Recording[], { page: number; limit: number }>({
-      query: ({ page, limit }) => `/recordings?page=${page}&limit=${limit}`,
-      serializeQueryArgs: ({ endpointName }) => {
-        return endpointName;
+    getRecordings: builder.query<
+      Recording[], 
+      { 
+        page: number; 
+        limit: number; 
+        searchTerm?: string;
+        triggerType?: string;
+        startDate?: string;
+        endDate?: string;
+        sortBy?: string;
+      }
+    >({
+      query: ({ page, limit, searchTerm, triggerType, startDate, endDate, sortBy }) => {
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: limit.toString(),
+        });
+        if (searchTerm) params.append('searchTerm', searchTerm);
+        if (triggerType && triggerType !== 'all') params.append('triggerType', triggerType);
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        if (sortBy) params.append('sortBy', sortBy);
+
+        return `/recordings?${params.toString()}`;
+      },
+      serializeQueryArgs: ({ queryArgs }) => {
+        const { searchTerm, triggerType, startDate, endDate, sortBy } = queryArgs;
+        return `getRecordings-${searchTerm || ''}-${triggerType || ''}-${startDate || ''}-${endDate || ''}-${sortBy || ''}`;
       },
       merge: (currentCache, newItems, { arg }) => {
         if (arg.page === 1) {
@@ -40,12 +64,19 @@ export const recordingsApi = createApi({
         return [...currentCache, ...newItems];
       },
       forceRefetch({ currentArg, previousArg }) {
-        return currentArg?.page !== previousArg?.page;
+        return (
+          currentArg?.page !== previousArg?.page ||
+          currentArg?.searchTerm !== previousArg?.searchTerm ||
+          currentArg?.triggerType !== previousArg?.triggerType ||
+          currentArg?.startDate !== previousArg?.startDate ||
+          currentArg?.endDate !== previousArg?.endDate ||
+          currentArg?.sortBy !== previousArg?.sortBy
+        );
       },
       providesTags: ['Recording'],
     }),
     getRecordingById: builder.query<Recording, string>({
-      query: (id) => `/recordings/${id}`,
+      query: (id) => `/recordings/${id}/details`,
       providesTags: (result, error, id) => [{ type: 'Recording', id }],
     }),
     deleteRecording: builder.mutation<void, string>({

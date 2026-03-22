@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { Button } from '../ui/button';
+import { Button } from '../ui/Button';
 
 export function Header() {
   const { theme, setTheme } = useTheme();
@@ -30,16 +30,16 @@ export function Header() {
   if (!user) return null;
 
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50 shadow-sm">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <header className="top-0 z-50 sticky bg-card shadow-sm border-border border-b">
+      <div className="mx-auto px-4 container">
+        <div className="flex justify-between items-center h-16">
           {/* Logo/Brand */}
           <Link to="/" className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-[#2563EB] rounded-lg">
+            <div className="flex justify-center items-center bg-[#2563EB] rounded-lg w-10 h-10">
               <Video className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-foreground">SecureWatch</h1>
+              <h1 className="font-semibold text-foreground text-lg">Secure Watch</h1>
             </div>
           </Link>
 
@@ -51,7 +51,7 @@ export function Header() {
               className={currentPage === 'live-stream' ? 'bg-[#2563EB] hover:bg-[#1d4ed8] text-white' : ''}
             >
               <Link to="/live-stream">
-                <Monitor className="w-4 h-4 mr-2" />
+                <Monitor className="mr-2 w-4 h-4" />
                 Live Stream
               </Link>
             </Button>
@@ -61,7 +61,7 @@ export function Header() {
               className={currentPage === 'recordings' ? 'bg-[#2563EB] hover:bg-[#1d4ed8] text-white' : ''}
             >
               <Link to="/recordings">
-                <Film className="w-4 h-4 mr-2" />
+                <Film className="mr-2 w-4 h-4" />
                 Recordings
               </Link>
             </Button>
@@ -85,12 +85,11 @@ export function Header() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 hover:bg-accent px-3 py-2 rounded-lg transition-colors outline-none">
+                <button className="flex items-center gap-3 hover:bg-accent px-3 py-2 rounded-lg outline-none transition-colors">
                   <div className="hidden sm:block text-right">
-                    <p className="text-sm font-medium text-foreground">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email || 'user@example.com'}</p>
+                    <p className="font-medium text-foreground text-sm">{user.name}</p>
                   </div>
-                  <div className="flex items-center justify-center w-10 h-10 bg-[#2563EB] rounded-full">
+                  <div className="flex justify-center items-center bg-[#2563EB] rounded-full w-10 h-10">
                     <UserIcon className="w-5 h-5 text-white" />
                   </div>
                 </button>
@@ -100,19 +99,19 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="md:hidden" asChild>
                   <Link to="/live-stream">
-                    <Monitor className="w-4 h-4 mr-2" />
+                    <Monitor className="mr-2 w-4 h-4" />
                     Live Stream
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="md:hidden" asChild>
                   <Link to="/recordings">
-                    <Film className="w-4 h-4 mr-2" />
+                    <Film className="mr-2 w-4 h-4" />
                     Recordings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="md:hidden" />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <LogOut className="mr-2 w-4 h-4" />
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>

@@ -22,15 +22,33 @@ export class RecordingController {
   async getRecordings(req: GetRecordingsRequest, res: Response): Promise<void> {
     const page = req.query.page ? parseInt(req.query.page, 10) : 1;
     const limit = req.query.limit ? parseInt(req.query.limit, 10) : 10;
+    const { searchTerm, triggerType, startDate, endDate, sortBy } = req.query;
     
     const result = await this.queryBus.execute<RecordingDto[]>(
-      new GetRecordingsQuery(page, limit),
+      new GetRecordingsQuery(
+        page, 
+        limit, 
+        searchTerm, 
+        triggerType, 
+        startDate ? new Date(startDate) : undefined,
+        endDate ? new Date(endDate) : undefined,
+        sortBy
+      ),
+    );
+    createResult(res, result);
+  }
+
+  async getRecordingById(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const result = await this.queryBus.execute<RecordingDetailDto | null>(
+      new GetRecordingByIdQuery(id.toString()),
     );
     createResult(res, result);
   }
 
   async streamRecording(req: StreamRecordingRequest, res: Response): Promise<void> {
     const { id } = req.params;
+    const download = req.query.download === "true";
     const result = await this.queryBus.execute<RecordingDetailDto | null>(
       new GetRecordingByIdQuery(id.toString()),
     );
@@ -52,7 +70,7 @@ export class RecordingController {
     const fileSize = stat.size;
     const range = req.headers.range;
 
-    if (range) {
+    if (range && !download) {
       const parts = range.replace(/bytes=/, "").split("-");
       const start = parseInt(parts[0], 10);
       const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
@@ -67,10 +85,15 @@ export class RecordingController {
       res.writeHead(206, head);
       file.pipe(res);
     } else {
-      const head = {
+      const head: any = {
         "Content-Length": fileSize,
         "Content-Type": recording.mimetype,
       };
+
+      if (download) {
+        head["Content-Disposition"] = `attachment; filename="${recording.filename}"`;
+      }
+
       res.writeHead(200, head);
       fs.createReadStream(filePath).pipe(res);
     }

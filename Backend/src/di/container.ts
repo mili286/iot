@@ -12,6 +12,7 @@ import { IoTEventRepository } from "../infrastructure/database/repositories/iot-
 import { RecordingRepository } from "../infrastructure/database/repositories/recording.repository";
 import { SocketService } from "../infrastructure/socket/socket.service";
 import { VideoService } from "../infrastructure/video/video.service";
+import { MjpegProcessorService } from "../infrastructure/video/mjpeg-processor.service";
 import { IIoTEventRepository } from "../domain/repositories/iot-event.repository.interface";
 import { IRecordingRepository } from "../domain/repositories/recording.repository.interface";
 import { UserContext } from "../infrastructure/auth/user-context";
@@ -68,6 +69,10 @@ container
 container
   .bind<VideoService>(TYPES.VideoService)
   .to(VideoService)
+  .inSingletonScope();
+container
+  .bind<MjpegProcessorService>(TYPES.MjpegProcessorService)
+  .to(MjpegProcessorService)
   .inSingletonScope();
 container
   .bind<IUserContext>(TYPES.UserContext)
