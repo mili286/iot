@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Circle, Maximize2, Video, Loader2 } from 'lucide-react';
 import { useAppSelector } from '../../app/hooks';
-import { Button } from '../../components/ui/button';
+import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { socketClient } from '../../services/socket/socketClient';
 import { useGetSystemParametersQuery } from '../../features/system/api/systemApi';

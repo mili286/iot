@@ -341,6 +341,15 @@ void uploadStoredFiles() {
             else fullPath = "/rec/" + fullPath;
         }
 
+        if (file.size() == 0) {
+            Serial.printf("Empty file detected, deleting: %s\n", fullPath.c_str());
+            file.close();
+            SD_MMC.remove(fullPath);
+            root.close();
+            isSyncing = false;
+            return;
+        }
+
         Serial.printf("Syncing: %s\n", fullPath.c_str());
         
         WiFiClient client;

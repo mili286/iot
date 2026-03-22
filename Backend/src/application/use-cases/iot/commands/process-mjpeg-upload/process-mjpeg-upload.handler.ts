@@ -30,14 +30,39 @@ export class ProcessMjpegUploadHandler implements ICommandHandler<
   async handle(
     command: ProcessMjpegUploadCommand,
   ): Promise<Result<SaveRecordingDto>> {
+    // Check if the uploaded file is empty
+    if (!fs.existsSync(command.path) || fs.statSync(command.path).size === 0) {
+      console.warn(
+        `Uploaded MJPEG file is empty or does not exist: ${command.path}. Skipping processing.`,
+      );
+      if (fs.existsSync(command.path)) {
+        fs.unlinkSync(command.path);
+      }
+      // Return a "success" to avoid ESP32 retrying, but with dummy ID
+      return Result.success({
+        id: "skipped",
+        filename: command.filename,
+        path: command.path,
+        mimetype: command.mimetype,
+        size: 0,
+        duration: 0,
+        triggerType: command.triggerType,
+        recordingDate: command.recordingDate,
+        syncDate: command.syncDate,
+        userId: command.userId,
+      });
+    }
+
     const latestRecording = await this.recordingRepository.findLatest();
-    
+
     let mergeWithLatest = false;
     if (latestRecording && latestRecording.mimetype === "video/mp4") {
-      const latestEndTime = latestRecording.recordingDate.getTime() + (latestRecording.duration * 1000);
+      const latestEndTime =
+        latestRecording.recordingDate.getTime() +
+        latestRecording.duration * 1000;
       const currentStartTime = command.recordingDate.getTime();
       const diffSeconds = (currentStartTime - latestEndTime) / 1000;
-      
+
       // If the difference is less than 1 minute (60 seconds), merge
       if (diffSeconds >= 0 && diffSeconds <= 60) {
         mergeWithLatest = true;
@@ -58,18 +83,19 @@ export class ProcessMjpegUploadHandler implements ICommandHandler<
       if (mergeWithLatest && latestRecording) {
         finalFilePath = latestRecording.path;
         finalFileName = latestRecording.filename;
-        
-        const { duration, size } = await this.mjpegProcessorService.processMjpeg(
-          command.path,
-          finalFilePath,
-          finalFilePath,
-          command.duration || 5,
-          latestRecording.duration
-        );
-        
+
+        const { duration, size } =
+          await this.mjpegProcessorService.processMjpeg(
+            command.path,
+            finalFilePath,
+            finalFilePath,
+            command.duration || 5,
+            latestRecording.duration,
+          );
+
         resultDuration = duration;
         resultSize = size;
-        
+
         // Update database
         await this.recordingRepository.update(latestRecording._id.toString(), {
           duration: resultDuration,
@@ -79,8 +105,10 @@ export class ProcessMjpegUploadHandler implements ICommandHandler<
 
         // Update system parameters
         const addedDuration = resultDuration - latestRecording.duration;
-        await this.systemParametersRepository.addRecordingsDuration(addedDuration);
-        
+        await this.systemParametersRepository.addRecordingsDuration(
+          addedDuration,
+        );
+
         // Delete the uploaded MJPEG file after processing
         if (fs.existsSync(command.path)) {
           fs.unlinkSync(command.path);
@@ -102,14 +130,15 @@ export class ProcessMjpegUploadHandler implements ICommandHandler<
         // Create new MP4
         finalFileName = `recording-${command.recordingDate.getTime()}.mp4`;
         finalFilePath = path.join(uploadDir, finalFileName).replace(/\\/g, "/");
-        
-        const { duration, size } = await this.mjpegProcessorService.processMjpeg(
-          command.path,
-          finalFilePath,
-          undefined,
-          command.duration || 5
-        );
-        
+
+        const { duration, size } =
+          await this.mjpegProcessorService.processMjpeg(
+            command.path,
+            finalFilePath,
+            undefined,
+            command.duration || 5,
+          );
+
         resultDuration = duration;
         resultSize = size;
 
@@ -126,7 +155,9 @@ export class ProcessMjpegUploadHandler implements ICommandHandler<
         });
 
         await this.systemParametersRepository.incrementRecordingsCount();
-        await this.systemParametersRepository.addRecordingsDuration(resultDuration);
+        await this.systemParametersRepository.addRecordingsDuration(
+          resultDuration,
+        );
 
         // Delete the uploaded MJPEG file after processing
         if (fs.existsSync(command.path)) {

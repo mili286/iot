@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/ffprobe": "^2.1.2",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/multer": "^2.0.0",
     "axios": "^1.13.4",
