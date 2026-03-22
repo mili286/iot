@@ -12,6 +12,8 @@ import {
   UploadStreamRequest,
 } from "../requests/iot.requests";
 
+import path from "path";
+
 @injectable()
 export class IoTController {
   constructor(@inject(TYPES.CommandBus) private commandBus: CommandBus) {}
@@ -38,13 +40,36 @@ export class IoTController {
 
     const filename =
       req.file.filename || req.file.originalname || `upload-${Date.now()}`;
-    const path = req.file.path;
+    const filePath = req.file.path;
     const mimetype = req.file.mimetype || "application/octet-stream";
     const size = req.file.size || 0;
     const duration = req.body.duration ? parseInt(req.body.duration, 10) : 0;
+    const triggerType = req.body.triggerType || "unknown";
+
+    // Extract recording date from filename (Unix timestamp)
+    const nameOnly = path.parse(filename).name;
+    let recordingDate = new Date();
+    
+    // Check if filename is a numeric string (Unix timestamp in seconds)
+    if (/^\d+$/.test(nameOnly)) {
+      const timestamp = parseInt(nameOnly, 10);
+      // If it looks like a timestamp (between year 2000 and 2100)
+      if (timestamp > 946684800 && timestamp < 4102444800) {
+        recordingDate = new Date(timestamp * 1000);
+      }
+    }
 
     const result = await this.commandBus.execute(
-      new SaveRecordingCommand(filename, path, mimetype, size, duration),
+      new SaveRecordingCommand(
+        filename,
+        filePath,
+        mimetype,
+        size,
+        duration,
+        triggerType,
+        recordingDate,
+        new Date(),
+      ),
     );
     createResult(res, result);
   }

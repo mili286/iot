@@ -30,6 +30,10 @@ export class SaveRecordingHandler implements ICommandHandler<
       mimetype: command.mimetype,
       size: command.size,
       duration: command.duration,
+      triggerType: command.triggerType,
+      recordingDate: command.recordingDate,
+      syncDate: command.syncDate,
+      userId: command.userId,
     });
 
     await this.systemParametersRepository.incrementRecordingsCount();
@@ -42,6 +46,10 @@ export class SaveRecordingHandler implements ICommandHandler<
       mimetype: recording.mimetype,
       size: recording.size,
       duration: recording.duration,
+      triggerType: recording.triggerType,
+      recordingDate: recording.recordingDate,
+      syncDate: recording.syncDate,
+      userId: recording.userId,
     });
   }
 }

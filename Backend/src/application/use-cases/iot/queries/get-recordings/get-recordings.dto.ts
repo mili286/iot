@@ -6,4 +6,9 @@ export interface RecordingDto {
   size: number;
   duration: number;
   timestamp: Date;
+  triggerType: string;
+  recordingDate: Date;
+  syncDate: Date;
+  userId?: string;
+  userName?: string;
 }

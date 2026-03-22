@@ -39,7 +39,7 @@ export class TriggerEventHandler implements ICommandHandler<
       message: `${event.type === "motion" ? "Motion Detected!" : "Button Pressed!"}`,
     });
 
-    this.socketService.startRecordingAll(30000);
+    this.socketService.startRecordingAll(30000, event.type);
 
     return Result.success({
       id: event._id.toString(),

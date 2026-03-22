@@ -51,7 +51,8 @@ export class SocketService {
           this.isRecordingActive &&
           !this.videoService.isRecording(socket.id)
         ) {
-          this.videoService.startRecording(socket.id);
+          // Default to unknown if started without user context (e.g. from public index.html)
+          this.videoService.startRecording(socket.id, "user");
         }
 
         if (this.videoService.isRecording(socket.id)) {
@@ -59,12 +60,12 @@ export class SocketService {
         }
       });
 
-      socket.on("start-recording", () => {
+      socket.on("start-recording", (data?: { userId?: string }) => {
         this.isRecordingActive = true;
 
         this.io?.sockets.sockets.forEach((s) => {
           if (!s.rooms.has("live-stream-clients")) {
-            this.videoService.startRecording(s.id);
+            this.videoService.startRecording(s.id, "user", data?.userId);
           }
         });
 
@@ -103,7 +104,10 @@ export class SocketService {
     }
   }
 
-  startRecordingAll(durationMs: number = 10000): void {
+  startRecordingAll(
+    durationMs: number = 10000,
+    triggerType: string = "unknown",
+  ): void {
     if (!this.io) return;
 
     this.isRecordingActive = true;
@@ -112,7 +116,7 @@ export class SocketService {
     const sockets = this.io.sockets.sockets;
     sockets.forEach((socket) => {
       if (!socket.rooms.has("live-stream-clients")) {
-        this.videoService.startRecording(socket.id);
+        this.videoService.startRecording(socket.id, triggerType);
       }
     });
 

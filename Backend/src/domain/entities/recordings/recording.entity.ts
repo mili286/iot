@@ -7,6 +7,10 @@ export interface Recording extends Document {
   size: number;
   duration: number;
   timestamp: Date;
+  recordingDate: Date;
+  syncDate: Date;
+  triggerType: string;
+  userId?: string;
 }
 
 const RecordingSchema = new mongoose.Schema<Recording>({
@@ -16,6 +20,10 @@ const RecordingSchema = new mongoose.Schema<Recording>({
   size: { type: Number, required: true },
   duration: { type: Number, default: 0 },
   timestamp: { type: Date, default: Date.now },
+  recordingDate: { type: Date, default: Date.now },
+  syncDate: { type: Date, default: Date.now },
+  triggerType: { type: String, default: "unknown" },
+  userId: { type: String, required: false },
 });
 
 export default mongoose.model<Recording>("Recording", RecordingSchema);

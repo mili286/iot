@@ -20,12 +20,18 @@ export class VideoService {
       filePath: string;
       fileName: string;
       startTime: number;
+      triggerType: string;
+      userId?: string;
     }
   > = new Map();
 
   constructor(@inject(TYPES.CommandBus) private commandBus: CommandBus) {}
 
-  startRecording(sessionId: string): string {
+  startRecording(
+    sessionId: string,
+    triggerType: string = "unknown",
+    userId?: string,
+  ): string {
     if (this.activeSessions.has(sessionId)) {
       return this.activeSessions.get(sessionId)!.filePath;
     }
@@ -44,6 +50,8 @@ export class VideoService {
       filePath,
       fileName,
       startTime: Date.now(),
+      triggerType,
+      userId,
     });
     return filePath;
   }
@@ -104,6 +112,10 @@ export class VideoService {
               "video/mp4",
               stats.size,
               duration,
+              session.triggerType,
+              new Date(session.startTime),
+              new Date(),
+              session.userId,
             ),
           );
           if (result.isFailure) {

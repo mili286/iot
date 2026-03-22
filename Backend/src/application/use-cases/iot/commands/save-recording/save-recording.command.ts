@@ -11,5 +11,9 @@ export class SaveRecordingCommand implements ICommand<SaveRecordingDto> {
     public readonly mimetype: string,
     public readonly size: number,
     public readonly duration: number,
+    public readonly triggerType: string,
+    public readonly recordingDate: Date,
+    public readonly syncDate: Date,
+    public readonly userId?: string,
   ) {}
 }

@@ -5,4 +5,8 @@ export interface SaveRecordingDto {
   mimetype: string;
   size: number;
   duration: number;
+  triggerType: string;
+  recordingDate: Date;
+  syncDate: Date;
+  userId?: string;
 }

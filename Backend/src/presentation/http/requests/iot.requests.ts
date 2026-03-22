@@ -10,6 +10,14 @@ interface TriggerEventRequest
     }
   > {}
 
-interface UploadStreamRequest extends Request {}
+interface UploadStreamRequest
+  extends Request<
+    any,
+    any,
+    {
+      duration?: string;
+      triggerType?: string;
+    }
+  > {}
 
 export { TriggerEventRequest, UploadStreamRequest };

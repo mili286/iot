@@ -1,6 +1,30 @@
+# Node
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+*.env
+
+# Trae
+.trae/
+
+# Uploads
+uploads/*.mp4
+uploads/*.mjpeg
+uploads/*.jpeg
+uploads/*.jpg
+uploads/*.png
+
+# IDE
 .idea/
 .vscode/
-node_modules/
-build/
-tmp/
-temp/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs
+*.log
