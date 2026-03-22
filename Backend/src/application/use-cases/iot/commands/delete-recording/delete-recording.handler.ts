@@ -4,6 +4,7 @@ import { DeleteRecordingCommand } from "./delete-recording.command";
 import { Result } from "../../../../../shared/result";
 import { TYPES } from "../../../../../shared/types/common.types";
 import { IRecordingRepository } from "../../../../../domain/repositories/recording.repository.interface";
+import { ISystemParametersRepository } from "../../../../../domain/repositories/system-parameters.repository.interface";
 import fs from "fs";
 import path from "path";
 
@@ -16,6 +17,8 @@ export class DeleteRecordingHandler implements ICommandHandler<DeleteRecordingCo
   constructor(
     @inject(TYPES.RecordingRepository)
     private recordingRepository: IRecordingRepository,
+    @inject(TYPES.SystemParametersRepository)
+    private systemParametersRepository: ISystemParametersRepository,
   ) {}
 
   async handle(command: DeleteRecordingCommand): Promise<Result<void>> {
@@ -50,6 +53,9 @@ export class DeleteRecordingHandler implements ICommandHandler<DeleteRecordingCo
         ),
       );
     }
+
+    await this.systemParametersRepository.decrementRecordingsCount();
+    await this.systemParametersRepository.subtractRecordingsDuration(recording.duration);
 
     return Result.success<void>();
   }

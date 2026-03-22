@@ -4,5 +4,6 @@ export interface RecordingDetailDto {
   path: string;
   mimetype: string;
   size: number;
+  duration: number;
   timestamp: Date;
 }

@@ -3,13 +3,36 @@ import { Server as HTTPServer } from "http";
 import { injectable, inject } from "inversify";
 import { TYPES } from "../../shared/types/common.types";
 import { VideoService } from "../video/video.service";
+import { ISystemParametersRepository } from "../../domain/repositories/system-parameters.repository.interface";
 
 @injectable()
 export class SocketService {
   private io: SocketIOServer | null = null;
   private isRecordingActive: boolean = false;
+  private isStreamActive: boolean = false;
+  private streamTimeout: NodeJS.Timeout | null = null;
 
-  constructor(@inject(TYPES.VideoService) private videoService: VideoService) {}
+  constructor(
+    @inject(TYPES.VideoService) private videoService: VideoService,
+    @inject(TYPES.SystemParametersRepository)
+    private systemParametersRepository: ISystemParametersRepository,
+  ) {}
+
+  private updateStreamActivity() {
+    if (!this.isStreamActive) {
+      this.isStreamActive = true;
+      this.systemParametersRepository.updateStatus("Active").catch(console.error);
+    }
+
+    if (this.streamTimeout) {
+      clearTimeout(this.streamTimeout);
+    }
+
+    this.streamTimeout = setTimeout(() => {
+      this.isStreamActive = false;
+      this.systemParametersRepository.updateStatus("Inactive").catch(console.error);
+    }, 5000); // Inactive after 5 seconds of no stream data
+  }
 
   initialize(server: HTTPServer): void {
     this.io = new SocketIOServer(server, {
@@ -21,6 +44,7 @@ export class SocketService {
 
     this.io.on("connection", (socket) => {
       socket.on("stream-data", (data: Buffer) => {
+        this.updateStreamActivity();
         this.io?.to("live-stream-clients").emit("live-stream-data", data);
 
         if (

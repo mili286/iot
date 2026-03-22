@@ -33,6 +33,7 @@ export class GetRecordingByIdHandler implements IQueryHandler<
       path: recording.path,
       mimetype: recording.mimetype,
       size: recording.size,
+      duration: recording.duration,
       timestamp: recording.timestamp,
     });
   }

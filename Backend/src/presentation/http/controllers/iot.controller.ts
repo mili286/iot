@@ -41,9 +41,10 @@ export class IoTController {
     const path = req.file.path;
     const mimetype = req.file.mimetype || "application/octet-stream";
     const size = req.file.size || 0;
+    const duration = req.body.duration ? parseInt(req.body.duration, 10) : 0;
 
     const result = await this.commandBus.execute(
-      new SaveRecordingCommand(filename, path, mimetype, size),
+      new SaveRecordingCommand(filename, path, mimetype, size, duration),
     );
     createResult(res, result);
   }

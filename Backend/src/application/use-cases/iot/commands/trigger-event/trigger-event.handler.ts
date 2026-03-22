@@ -5,6 +5,7 @@ import { TriggerEventCommand } from "./trigger-event.command";
 import { Result } from "../../../../../shared/result";
 import { TYPES } from "../../../../../shared/types/common.types";
 import { IIoTEventRepository } from "../../../../../domain/repositories/iot-event.repository.interface";
+import { ISystemParametersRepository } from "../../../../../domain/repositories/system-parameters.repository.interface";
 import { SocketService } from "../../../../../infrastructure/socket/socket.service";
 import { TriggerEventDto } from "./trigger-event.dto";
 
@@ -18,6 +19,8 @@ export class TriggerEventHandler implements ICommandHandler<
     @inject(TYPES.IoTEventRepository)
     private eventRepository: IIoTEventRepository,
     @inject(TYPES.SocketService) private socketService: SocketService,
+    @inject(TYPES.SystemParametersRepository)
+    private systemParametersRepository: ISystemParametersRepository,
   ) {}
 
   async handle(command: TriggerEventCommand): Promise<Result<TriggerEventDto>> {
@@ -25,6 +28,10 @@ export class TriggerEventHandler implements ICommandHandler<
       type: command.type,
       timestamp: command.timestamp,
     });
+
+    if (event.type === "motion") {
+      await this.systemParametersRepository.incrementMotionEventsCount();
+    }
 
     this.socketService.emitNotification({
       type: event.type,

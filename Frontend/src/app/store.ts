@@ -3,6 +3,7 @@ import { setupListeners } from '@reduxjs/toolkit/query';
 import { authApi } from '../features/auth/api/authApi';
 import { usersApi } from '../features/users/api/usersApi';
 import { recordingsApi } from '../features/recordings/api/recordingsApi';
+import { systemApi } from '../features/system/api/systemApi';
 import authReducer from '../features/auth/store/authSlice';
 
 export const store = configureStore({
@@ -10,6 +11,7 @@ export const store = configureStore({
     [authApi.reducerPath]: authApi.reducer,
     [usersApi.reducerPath]: usersApi.reducer,
     [recordingsApi.reducerPath]: recordingsApi.reducer,
+    [systemApi.reducerPath]: systemApi.reducer,
     auth: authReducer,
   },
   middleware: (getDefaultMiddleware) =>
@@ -17,6 +19,7 @@ export const store = configureStore({
       authApi.middleware,
       usersApi.middleware,
       recordingsApi.middleware,
+      systemApi.middleware,
     ]),
 });
 

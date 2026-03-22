@@ -5,6 +5,7 @@ export interface Recording extends Document {
   path: string;
   mimetype: string;
   size: number;
+  duration: number;
   timestamp: Date;
 }
 
@@ -13,6 +14,7 @@ const RecordingSchema = new mongoose.Schema<Recording>({
   path: { type: String, required: true },
   mimetype: { type: String, required: true },
   size: { type: Number, required: true },
+  duration: { type: Number, default: 0 },
   timestamp: { type: Date, default: Date.now },
 });
 

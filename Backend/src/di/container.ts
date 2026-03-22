@@ -19,6 +19,9 @@ import { IUserContext } from "../application/ports/user-context.interface";
 import { IAuthService } from "../application/ports/auth.service.interface";
 import { IoTController } from "../presentation/http/controllers/iot.controller";
 import { RecordingController } from "../presentation/http/controllers/recording.controller";
+import { SystemParametersRepository } from "../infrastructure/database/repositories/system/system-parameters.repository";
+import { ISystemParametersRepository } from "../domain/repositories/system-parameters.repository.interface";
+import { SystemParametersController } from "../presentation/http/controllers/system-parameters.controller";
 
 const container = new Container();
 
@@ -34,6 +37,9 @@ container
 container
   .bind<IRecordingRepository>(TYPES.RecordingRepository)
   .to(RecordingRepository);
+container
+  .bind<ISystemParametersRepository>(TYPES.SystemParametersRepository)
+  .to(SystemParametersRepository);
 
 // CQRS Buses - bind in request scope so they get the request-scoped container
 container.bind<CommandBus>(TYPES.CommandBus).to(CommandBus).inRequestScope();
@@ -46,6 +52,9 @@ container.bind<IoTController>(TYPES.IoTController).to(IoTController);
 container
   .bind<RecordingController>(TYPES.RecordingController)
   .to(RecordingController);
+container
+  .bind<SystemParametersController>(TYPES.SystemParametersController)
+  .to(SystemParametersController);
 
 // Services
 container

@@ -5,6 +5,7 @@ import { SaveRecordingCommand } from "./save-recording.command";
 import { Result } from "../../../../../shared/result";
 import { TYPES } from "../../../../../shared/types/common.types";
 import { IRecordingRepository } from "../../../../../domain/repositories/recording.repository.interface";
+import { ISystemParametersRepository } from "../../../../../domain/repositories/system-parameters.repository.interface";
 import { SaveRecordingDto } from "./save-recording.dto";
 
 @injectable()
@@ -16,6 +17,8 @@ export class SaveRecordingHandler implements ICommandHandler<
   constructor(
     @inject(TYPES.RecordingRepository)
     private recordingRepository: IRecordingRepository,
+    @inject(TYPES.SystemParametersRepository)
+    private systemParametersRepository: ISystemParametersRepository,
   ) {}
 
   async handle(
@@ -26,7 +29,11 @@ export class SaveRecordingHandler implements ICommandHandler<
       path: command.path,
       mimetype: command.mimetype,
       size: command.size,
+      duration: command.duration,
     });
+
+    await this.systemParametersRepository.incrementRecordingsCount();
+    await this.systemParametersRepository.addRecordingsDuration(command.duration);
 
     return Result.success({
       id: recording._id.toString(),
@@ -34,6 +41,7 @@ export class SaveRecordingHandler implements ICommandHandler<
       path: recording.path,
       mimetype: recording.mimetype,
       size: recording.size,
+      duration: recording.duration,
     });
   }
 }

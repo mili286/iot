@@ -26,6 +26,7 @@ export class GetRecordingsHandler implements IQueryHandler<
       path: recording.path,
       mimetype: recording.mimetype,
       size: recording.size,
+      duration: recording.duration,
       timestamp: recording.timestamp,
     }));
     return Result.success(dtos);

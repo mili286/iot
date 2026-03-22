@@ -4,4 +4,5 @@ export interface SaveRecordingDto {
   path: string;
   mimetype: string;
   size: number;
+  duration: number;
 }

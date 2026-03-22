@@ -19,6 +19,7 @@ export class VideoService {
       command?: ffmpeg.FfmpegCommand;
       filePath: string;
       fileName: string;
+      startTime: number;
     }
   > = new Map();
 
@@ -42,6 +43,7 @@ export class VideoService {
       stream: inputStream,
       filePath,
       fileName,
+      startTime: Date.now(),
     });
     return filePath;
   }
@@ -84,6 +86,9 @@ export class VideoService {
       return;
     }
 
+    const session = this.activeSessions.get(sessionId)!;
+    const duration = Math.round((Date.now() - session.startTime) / 1000);
+
     this.activeSessions.delete(sessionId);
 
     if (fs.existsSync(filePath)) {
@@ -98,6 +103,7 @@ export class VideoService {
               normalizedPath,
               "video/mp4",
               stats.size,
+              duration,
             ),
           );
           if (result.isFailure) {

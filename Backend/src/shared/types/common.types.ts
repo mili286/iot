@@ -13,4 +13,6 @@ export const TYPES = {
   VideoService: Symbol.for("VideoService"),
   IoTController: Symbol.for("IoTController"),
   RecordingController: Symbol.for("RecordingController"),
+  SystemParametersRepository: Symbol.for("SystemParametersRepository"),
+  SystemParametersController: Symbol.for("SystemParametersController"),
 };

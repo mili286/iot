@@ -6,16 +6,23 @@ import { connect } from "./infrastructure/database/database";
 import { container } from "./di/container";
 import { TYPES } from "./shared/types/common.types";
 import { SocketService } from "./infrastructure/socket/socket.service";
+import { ISystemParametersRepository } from "./domain/repositories/system-parameters.repository.interface";
 
 const PORT = process.env.PORT || 3000;
 const httpServer = createServer(app);
 const socketService = container.get<SocketService>(TYPES.SocketService);
+const systemParametersRepository = container.get<ISystemParametersRepository>(
+  TYPES.SystemParametersRepository,
+);
 
 configDotenv();
 
 const startServer = async () => {
   try {
     await connect();
+
+    // Initialize System Parameters
+    await systemParametersRepository.initializeSystemParameters();
 
     // Initialize Socket.io
     socketService.initialize(httpServer);

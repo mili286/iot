@@ -10,5 +10,6 @@ export class SaveRecordingCommand implements ICommand<SaveRecordingDto> {
     public readonly path: string,
     public readonly mimetype: string,
     public readonly size: number,
+    public readonly duration: number,
   ) {}
 }

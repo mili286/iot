@@ -3,12 +3,29 @@ import { container } from "../../../di/container";
 import { TYPES } from "../../../shared/types/common.types";
 import { IoTController } from "../controllers/iot.controller";
 import { RecordingController } from "../controllers/recording.controller";
+import { SystemParametersController } from "../controllers/system-parameters.controller";
 import { upload } from "../../../infrastructure/storage/multer.config";
 
 const router = Router();
 const iotController = container.get<IoTController>(TYPES.IoTController);
 const recordingController = container.get<RecordingController>(
   TYPES.RecordingController,
+);
+const systemParametersController = container.get<SystemParametersController>(
+  TYPES.SystemParametersController,
+);
+
+/**
+ * @openapi
+ * /api/system/parameters:
+ *   get:
+ *     description: Returns the system parameters (dashboard metrics)
+ *     responses:
+ *       200:
+ *         description: System parameters
+ */
+router.get("/system/parameters", (req, res) =>
+  systemParametersController.getParameters(req, res),
 );
 
 /**

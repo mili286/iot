@@ -5,4 +5,5 @@ export const saveRecordingSchema = Joi.object({
   path: Joi.string().required(),
   mimetype: Joi.string().required(),
   size: Joi.number().required(),
+  duration: Joi.number().required(),
 });
