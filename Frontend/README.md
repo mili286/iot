@@ -66,7 +66,7 @@ The frontend is built with a focus on scalability, performance, and clean code:
     ```
 3.  **Run in development**:
     ```bash
-    npm run dev
+    npm run dev # Accessible at http://localhost:3030
     ```
 4.  **Build for production**:
     ```bash

@@ -45,7 +45,7 @@ npm run dev
 ```bash
 cd Frontend
 npm install
-npm run dev
+npm run dev # Dashboard will be available at http://localhost:3030
 ```
 
 #### 3. ESP32 Deployment
