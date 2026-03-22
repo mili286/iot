@@ -1,0 +1,59 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Build Artifacts
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Trae files
+.trae/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Backend Specifics
+Backend/uploads/*
+!Backend/uploads/.gitkeep
+# Exclude specific extensions as well for safety
+Backend/uploads/*.mp4
+Backend/uploads/*.mjpeg
+Backend/uploads/*.jpeg
+Backend/uploads/*.jpg
+Backend/uploads/*.png
+
+# Frontend Specifics
+Frontend/dist/
+Frontend/build/
+Frontend/.rsbuild/
+
+# ESP32 Specifics
+ESP32/libraries/**/.*
+ESP32/security_camera/.*
+*.o
+*.a
+*.so
+*.bin
+*.elf
+*.hex
+
+# Logs
+logs
+*.log

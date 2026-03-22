@@ -86,7 +86,7 @@ export function LiveStreamPage() {
       socketRef.current?.emit('stop-recording');
       toast.info('Recording stopped');
     } else {
-      socketRef.current?.emit('start-recording');
+      socketRef.current?.emit('start-recording', { userId: user?.id });
       toast.info('Recording started');
     }
     setTimeout(() => refetchParams(), 1000);

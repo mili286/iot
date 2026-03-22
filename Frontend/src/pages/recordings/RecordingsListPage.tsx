@@ -301,17 +301,27 @@ export function RecordingsListPage() {
                   <div className="flex justify-between items-start gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground truncate">
-                        {formatDate(recording.createdAt)}
+                        {formatDate(recording.recordingDate || recording.createdAt)}
                       </p>
                       <div className="flex items-center gap-2 mt-1 text-muted-foreground text-sm">
                         <Clock className="w-3.5 h-3.5" />
-                        <span>{new Date(recording.createdAt).toLocaleTimeString()}</span>
+                        <span>{new Date(recording.recordingDate || recording.createdAt).toLocaleTimeString()}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <p className="text-xs truncate">{recording.filename}</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                      <span className="font-medium">Synced:</span>
+                      <span>{formatDate(recording.syncDate)} {new Date(recording.syncDate).toLocaleTimeString()}</span>
+                    </div>
+                    {recording.triggerType === 'user' && recording.userName && (
+                      <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                        <UserIcon className="w-3 h-3" />
+                        <span>By: {recording.userName}</span>
+                      </div>
+                    )}
+                    <p className="text-muted-foreground text-xs truncate">{recording.filename}</p>
                   </div>
 
                   {/* Action Buttons */}

@@ -4,10 +4,14 @@ import type { RootState } from '../../../app/store';
 export interface Recording {
   id: string;
   filename: string;
-  triggerType: 'motion' | 'user' | 'button';
+  triggerType: string;
   duration: number;
-  fileSize: number;
+  size: number;
   createdAt: string;
+  recordingDate: string;
+  syncDate: string;
+  userId?: string;
+  userName?: string;
 }
 
 export const recordingsApi = createApi({

@@ -2,10 +2,13 @@
 .DS_Store
 *.local
 *.log*
+.trae/
 
 # Dist
 node_modules
 dist/
+build/
+.rsbuild/
 
 # Profile
 .rspack-profile-*/

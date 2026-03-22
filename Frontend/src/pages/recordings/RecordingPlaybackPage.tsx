@@ -296,8 +296,15 @@ export function RecordingPlaybackPage() {
                   <div className="flex items-start gap-3">
                     <Clock className="w-5 h-5 text-muted-foreground mt-0.5" />
                     <div className="flex-1">
-                      <p className="text-sm text-muted-foreground">Date & Time</p>
-                      <p className="text-sm font-medium">{formatDate(recording.createdAt)}</p>
+                      <p className="text-sm text-muted-foreground">Recording Date & Time</p>
+                      <p className="text-sm font-medium">{formatDate(recording.recordingDate || recording.createdAt)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-5 h-5 text-muted-foreground mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">Sync Date & Time</p>
+                      <p className="text-sm font-medium">{formatDate(recording.syncDate)}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -325,6 +332,15 @@ export function RecordingPlaybackPage() {
                       </Badge>
                     </div>
                   </div>
+                  {recording.triggerType === 'user' && recording.userName && (
+                    <div className="flex items-start gap-3">
+                      <UserIcon className="w-5 h-5 text-muted-foreground mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground">Started By</p>
+                        <p className="text-sm font-medium">{recording.userName}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -336,7 +352,7 @@ export function RecordingPlaybackPage() {
                     <HardDrive className="w-5 h-5 text-muted-foreground mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm text-muted-foreground">File Size</p>
-                      <p className="text-sm font-medium">{formatFileSize(recording.fileSize)}</p>
+                      <p className="text-sm font-medium">{formatFileSize(recording.size)}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">

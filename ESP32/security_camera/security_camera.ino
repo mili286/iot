@@ -135,7 +135,7 @@ void loop() {
 
   // If reconnected and not syncing, start sync
   if (wsConnected && !isSyncing && sdAvailable) {
-    // uploadStoredFiles();
+    uploadStoredFiles();
   }
 
   int pirState = digitalRead(PIR_PIN);
@@ -312,80 +312,104 @@ void manageSDSpace() {
 }
 
 void uploadStoredFiles() {
+    if (isSyncing) return;
     isSyncing = true;
-    File root = SD_MMC.open("/rec");
-    File file = root.openNextFile();
     
-    while (file) {
-        if (!wsConnected) break; // Stop if lost connection again
+    File root = SD_MMC.open("/rec");
+    if (!root) {
+        isSyncing = false;
+        return;
+    }
+    
+    File file = root.openNextFile();
+    // If no more files, close root and exit
+    if (!file) {
+        root.close();
+        isSyncing = false;
+        return;
+    }
+    
+    // We process only one file per call to avoid directory iterator corruption 
+    // when deleting files. loop() will call this again for the next file.
+    String entryName = String(file.name());
+    
+    if (entryName.endsWith(".mjpeg")) {
+        // Ensure we have the full path for removal and reading
+        String fullPath = entryName;
+        if (!fullPath.startsWith("/rec/")) {
+            if (fullPath.startsWith("/")) fullPath = "/rec" + fullPath;
+            else fullPath = "/rec/" + fullPath;
+        }
+
+        Serial.printf("Syncing: %s\n", fullPath.c_str());
         
-        String filePath = String(file.name());
-        if (filePath.endsWith(".mjpeg")) {
-            Serial.printf("Syncing: %s\n", filePath.c_str());
+        WiFiClient client;
+        if (client.connect(serverIP, serverPort)) {
+            String boundary = "----ESP32Boundary" + String(millis());
             
-            WiFiClient client;
-            if (client.connect(serverIP, serverPort)) {
-                String boundary = "----ESP32Boundary" + String(millis());
-                // Remove "/rec/" or leading "/" if present to get clean filename
-                String fileName = filePath;
-                if (fileName.startsWith("/rec/")) fileName = fileName.substring(5);
-                else if (fileName.startsWith("/")) fileName = fileName.substring(1);
-                
-                String header = "--" + boundary + "\r\n";
-                header += "Content-Disposition: form-data; name=\"file\"; filename=\"" + fileName + "\"\r\n";
-                header += "Content-Type: video/x-motion-jpeg\r\n\r\n";
-                String tail = "\r\n--" + boundary + "--\r\n";
-                
-                size_t fileSize = file.size();
-                uint32_t totalLength = header.length() + fileSize + tail.length();
-                
-                client.printf("POST /api/upload/stream HTTP/1.1\r\n");
-                client.printf("Host: %s:%d\r\n", serverIP, serverPort);
-                client.printf("Content-Type: multipart/form-data; boundary=%s\r\n", boundary.c_str());
-                client.printf("Content-Length: %d\r\n", totalLength);
-                client.printf("Connection: close\r\n\r\n");
-                
-                client.print(header);
-                
-                uint8_t buffer[1024];
-                while (file.available()) {
-                    size_t bytesRead = file.read(buffer, sizeof(buffer));
-                    client.write(buffer, bytesRead);
-                }
-                
-                client.print(tail);
-                
-                // Read response
-                unsigned long timeout = millis();
-                bool success = false;
-                while (client.connected() && millis() - timeout < 10000) {
-                    if (client.available()) {
-                        String line = client.readStringUntil('\n');
-                        if (line.indexOf("200 OK") != -1 || line.indexOf("201 Created") != -1) {
-                            success = true;
-                            break;
-                        }
+            // Get clean filename for the server (no directory prefix)
+            String uploadName = fullPath;
+            if (uploadName.lastIndexOf('/') != -1) {
+                uploadName = uploadName.substring(uploadName.lastIndexOf('/') + 1);
+            }
+            
+            String header = "--" + boundary + "\r\n";
+            header += "Content-Disposition: form-data; name=\"file\"; filename=\"" + uploadName + "\"\r\n";
+            header += "Content-Type: video/x-motion-jpeg\r\n\r\n";
+            String tail = "\r\n--" + boundary + "--\r\n";
+            
+            size_t fileSize = file.size();
+            uint32_t totalLength = header.length() + fileSize + tail.length();
+            
+            client.printf("POST /api/upload/stream HTTP/1.1\r\n");
+            client.printf("Host: %s:%d\r\n", serverIP, serverPort);
+            client.printf("Content-Type: multipart/form-data; boundary=%s\r\n", boundary.c_str());
+            client.printf("Content-Length: %d\r\n", totalLength);
+            client.printf("Connection: close\r\n\r\n");
+            
+            client.print(header);
+            
+            uint8_t buffer[1024];
+            while (file.available()) {
+                size_t bytesRead = file.read(buffer, sizeof(buffer));
+                client.write(buffer, bytesRead);
+            }
+            
+            client.print(tail);
+            
+            // Read response
+            unsigned long timeout = millis();
+            bool success = false;
+            while (client.connected() && millis() - timeout < 10000) {
+                if (client.available()) {
+                    String line = client.readStringUntil('\n');
+                    if (line.indexOf("200 OK") != -1 || line.indexOf("201 Created") != -1) {
+                        success = true;
+                        break;
                     }
                 }
-                
-                if (success) {
-                    Serial.println("Sync success, deleting file");
-                    file.close();
-                    SD_MMC.remove(filePath);
-                } else {
-                    Serial.println("Sync failed or timeout");
-                    file.close();
-                }
-                client.stop();
-            } else {
-                Serial.println("Connection failed");
-                file.close();
             }
+            
+            file.close();
+            if (success) {
+                if (SD_MMC.remove(fullPath)) {
+                    Serial.println("Sync success, file deleted");
+                } else {
+                    Serial.printf("Sync success, but FAILED to delete: %s\n", fullPath.c_str());
+                }
+            } else {
+                Serial.println("Sync failed or timeout");
+            }
+            client.stop();
         } else {
+            Serial.println("Connection to server failed");
             file.close();
         }
-        file = root.openNextFile();
+    } else {
+        file.close();
     }
+    
+    root.close();
     isSyncing = false;
 }
 
